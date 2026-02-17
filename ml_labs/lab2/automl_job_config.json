@@ -1,0 +1,9 @@
+{
+  "job_resource_name": "projects/873708835509/locations/us-central1/trainingPipelines/4179214474219094016",
+  "dataset_resource_name": "projects/873708835509/locations/us-central1/datasets/1831077736630714368",
+  "project_id": "carty-470812",
+  "region": "us-central1",
+  "bucket_name": "carty-470812-ml-census-data",
+  "target_column": "income_bracket",
+  "started_at": "2026-02-15T07:36:32.423427"
+}

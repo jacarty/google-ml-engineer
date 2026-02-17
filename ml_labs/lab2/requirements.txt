@@ -1,0 +1,6 @@
+pandas==2.3.3
+scikit-learn==1.6.1
+joblib==1.4.2
+gcsfs==2026.2.0
+pyarrow==23.0.0
+google-cloud-storage==3.9.0
