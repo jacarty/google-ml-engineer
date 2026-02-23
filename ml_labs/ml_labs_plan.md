@@ -1,6 +1,7 @@
 # GCP ML Engineer Certification - Complete Learning Plan
 
 **Created:** February 14, 2026  
+**Last Updated:** February 21, 2026  
 **Goal:** Google Cloud Professional Machine Learning Engineer Certification  
 **Approach:** Hands-on labs first, then theory reinforcement
 
@@ -10,12 +11,25 @@
 
 This learning plan emphasizes **practical implementation before theory**. Each lab builds real-world ML skills using Google Cloud Platform, followed by theoretical deep-dives to understand the "why" behind what you've built.
 
-**Total Duration:** 10 weeks  
-**Estimated Cost:** <$50 total (using GCP free tier)
+**Total Duration:** 12 weeks  
+**Estimated Cost:** <$60 total (using GCP free tier)
 
 ---
 
-## Phase 1: Hands-On Labs (Weeks 1-5)
+## Progress Summary
+
+| Lab | Status | Key Result |
+|-----|--------|------------|
+| Lab 1: BigQuery ML | ✅ Complete | Boosted trees: 86.23% accuracy |
+| Lab 2: Vertex AI Pipeline | ✅ Complete | Custom beat AutoML (87.10% vs 86.8%) at $0.04 vs $10-15 |
+| Lab 3: Hyperparameter Tuning | ✅ Complete | Manual vs Bayesian optimization comparison |
+| Lab 4: Monitoring & Drift | ✅ Complete | Drift detection + response runbook |
+| Lab 5: MLOps Services | 📋 Planned | — |
+| Lab 6: Agent Builder | 📋 Planned | — |
+
+---
+
+## Phase 1: Hands-On Labs (Weeks 1-7)
 
 ### Week 1: Lab 1 - Feature Engineering with BigQuery ML ✅ COMPLETED
 
@@ -36,115 +50,92 @@ This learning plan emphasizes **practical implementation before theory**. Each l
 - BigQuery ML model training
 - Feature engineering strategies
 - Model evaluation (precision, recall, ROC AUC)
-- Train-serve skew prevention
+- Train-serve skew prevention (TRANSFORM pattern)
 - Algorithm selection criteria
 
----
-
-### Weeks 2-3: Lab 2 - End-to-End Pipeline in Vertex AI
-
-**Duration:** 1.5 weeks  
-**Difficulty:** Intermediate
-
-#### Objectives
-Understand the full ML lifecycle: data → training → deployment → prediction → monitoring.
-
-#### Part 1: Data Preparation (Day 1-2)
-**Tasks:**
-- Export data from BigQuery to Cloud Storage
-- Create Vertex AI Dataset (tabular)
-- Define schema and data splits
-- Understand data versioning
-
-**Deliverables:**
-- Dataset in Vertex AI
-- Data exploration notebook
-- Schema documentation
-
-#### Part 2: AutoML Training (Day 3-4)
-**Tasks:**
-- Train AutoML Tabular model
-- Configure budget and early stopping
-- Analyze training logs
-- Review feature importance (AutoML-generated)
-
-**Deliverables:**
-- Trained AutoML model
-- Performance metrics comparison (vs. BigQuery ML)
-- Cost analysis
-
-**Expected Results:**
-- Accuracy: 86-88%
-- Training time: 1-2 hours
-- Cost: ~$5-10
-
-#### Part 3: Custom Training (Day 5-7)
-**Tasks:**
-- Write training script (Python + scikit-learn)
-- Create Docker container
-- Submit custom training job to Vertex AI
-- Track experiments with Vertex AI Experiments
-
-**Key Files to Create:**
-```
-train.py          # Training logic
-Dockerfile        # Container definition
-requirements.txt  # Dependencies
-config.yaml       # Hyperparameters
-```
-
-**Deliverables:**
-- Custom training container
-- Trained model artifact
-- Experiment tracking logs
-
-#### Part 4: Model Deployment (Day 8-9)
-**Tasks:**
-- Deploy model to Vertex AI Endpoint
-- Configure autoscaling (min/max replicas)
-- Test online predictions
-- Run batch prediction job
-
-**Deliverables:**
-- Live prediction endpoint
-- Batch prediction results
-- Latency benchmarks
-
-#### Part 5: Architecture Documentation (Day 10)
-**Tasks:**
-- Create end-to-end architecture diagram
-- Document data flow
-- Compare AutoML vs. Custom Training (cost, performance, flexibility)
-
-**Deliverables:**
-- Architecture diagram (use draw.io or Lucidchart)
-- Decision matrix: When to use AutoML vs. Custom
-- Production deployment checklist
-
-**Key Learnings:**
-- Vertex AI vs. BigQuery ML tradeoffs
-- Container-based training
-- Online vs. batch predictions
-- Resource management and autoscaling
+**Key Insight:** Algorithm selection (boosted trees) was 9.7x more effective than manual feature engineering.
 
 ---
 
-### Week 4: Lab 3 - Hyperparameter Tuning
+### Weeks 2-3: Lab 2 - End-to-End Pipeline in Vertex AI ✅ COMPLETED
 
-**Duration:** 1 week  
-**Difficulty:** Intermediate-Advanced
+**Status:** ✅ Complete  
+**Key Achievement:** Custom training outperformed AutoML (87.10% vs 86.8%) at a fraction of the cost ($0.04 vs $10-15).
 
-#### Objectives
-Learn systematic hyperparameter optimization and understand tuning tradeoffs.
+#### Objectives Achieved
+- Full ML lifecycle: data → training → deployment → prediction
+- AutoML vs Custom Training comparison
+- Container-based training with custom Docker images
+- Model deployment to Vertex AI Endpoints
 
-#### Part 1: Manual Tuning Baseline (Day 1-2)
-**Tasks:**
-- Modify training script to accept hyperparameters as arguments
-- Train 5 models with different hyperparameter combinations
-- Track results manually in spreadsheet
-- Experience the pain of manual tuning
+#### Part 1: Data Preparation
+**Completed Tasks:**
+- Exported data from BigQuery to Cloud Storage (CSV, 32,561 rows)
+- Created Vertex AI Dataset (tabular) — learned these are metadata wrappers, not data copies
+- Established data flow: BigQuery → GCS → Vertex AI
 
-**Hyperparameters to tune:**
+**Key Files:**
+- `gs://carty-470812-ml-census-data/data/census_income.csv`
+- Vertex AI Dataset: `census-income-dataset`
+
+#### Part 2: AutoML Training
+**Results:**
+- Accuracy: 86.8% | ROC AUC: 0.95
+- Training time: 2+ hours
+- Cost: ~$10-15
+
+#### Part 3: Custom Training
+**Results:**
+- Accuracy: 87.10% | ROC AUC: 0.93
+- Training time: 12 minutes
+- Cost: ~$0.04
+
+**Key Files:**
+```
+train.py          # Training logic (argparse for hyperparameters)
+Dockerfile        # Python 3.10-slim + scikit-learn 1.3.2
+serve.py          # Flask serving endpoint
+```
+
+**Container:** `gcr.io/carty-470812/census-custom-training:v1`
+
+#### Part 4: Model Deployment
+- Deployed to Vertex AI Endpoint with custom serving container
+- Tested online predictions successfully
+- Resolved Python version compatibility issues between training and serving containers
+
+**Critical Learning:** Models saved with different Python versions can't be loaded by serving containers — using the same custom container for both training and serving eliminates version mismatches entirely.
+
+#### Part 5: Architecture Documentation
+- Documented end-to-end architecture
+- Created AutoML vs Custom Training decision matrix
+
+**Skills Acquired:**
+- Vertex AI custom training jobs
+- Docker containerization for ML
+- Model deployment and endpoint management
+- Container version compatibility debugging
+- Cost optimization (custom vs managed)
+
+---
+
+### Week 4: Lab 3 - Hyperparameter Tuning ✅ COMPLETED
+
+**Status:** ✅ Complete
+
+#### Objectives Achieved
+- Systematic hyperparameter optimization
+- Manual tuning vs automated Bayesian optimization comparison
+- Understanding of tuning tradeoffs and diminishing returns
+
+#### Part 1: Manual Tuning Baseline
+**Tasks Completed:**
+- Adapted training script to run locally in notebook
+- Trained 5+ models with different hyperparameter combinations
+- Tracked results in DataFrame
+- Experienced why manual tuning is tedious
+
+**Hyperparameters tuned:**
 ```python
 - n_estimators: [50, 100, 200]
 - max_depth: [5, 10, 20, 30]
@@ -152,73 +143,30 @@ Learn systematic hyperparameter optimization and understand tuning tradeoffs.
 - min_samples_split: [2, 5, 10]
 ```
 
+#### Part 2: Vertex AI Hyperparameter Tuning
+**Tasks Completed:**
+- Modified `train.py` to report metrics back to Vertex AI tuning service
+- Defined search space with Bayesian optimization
+- Configured max_trial_count and parallel_trial_count
+- Compared cost/time vs manual approach
+
+#### Part 3: Visualization & Analysis
 **Deliverables:**
-- 5 trained models
-- Manual tracking spreadsheet
-- Time/cost documentation
+- Jupyter notebook with hyperparameter interaction plots
+- Analysis of which hyperparameters mattered most
+- Cost-benefit analysis of tuning
 
-#### Part 2: Vertex AI Hyperparameter Tuning (Day 3-5)
-**Tasks:**
-- Define hyperparameter search space
-- Configure Bayesian optimization
-- Set max_trial_count and parallel_trial_count
-- Monitor tuning progress in console
-
-**Sample Configuration:**
-```python
-hpt_job = aiplatform.HyperparameterTuningJob(
-    display_name='census-tuning',
-    custom_job=custom_job,
-    metric_spec={'accuracy': 'maximize'},
-    parameter_spec={
-        'n_estimators': hpt.IntegerParameterSpec(min=50, max=200, scale='linear'),
-        'max_depth': hpt.IntegerParameterSpec(min=5, max=30, scale='linear'),
-        'learning_rate': hpt.DoubleParameterSpec(min=0.01, max=0.3, scale='log')
-    },
-    max_trial_count=20,
-    parallel_trial_count=4
-)
-```
-
-**Deliverables:**
-- Tuning job results
-- Best hyperparameters found
-- Convergence analysis
-
-#### Part 3: Visualization & Analysis (Day 6-7)
-**Tasks:**
-- Create hyperparameter interaction plots
-- Build heatmaps showing parameter effects
-- Identify diminishing returns
-- Compare tuned vs. baseline performance
-
-**Visualizations to Create:**
-- Parallel coordinates plot
-- Hyperparameter vs. accuracy scatter plots
-- Confusion matrix comparison
-- Training time vs. performance tradeoff
-
-**Deliverables:**
-- Jupyter notebook with visualizations
-- Analysis: Which hyperparameters mattered most?
-- Cost-benefit analysis: Was tuning worth it?
-
-**Key Questions to Answer:**
-- Did accuracy improve significantly?
-- Which hyperparameters had the biggest impact?
-- Where do you see diminishing returns?
-- What's the optimal balance of cost vs. performance?
-
-**Expected Improvement:**
-- Baseline: 86.23%
-- After tuning: 86.5-87.5% (prediction)
-- Cost: ~$10-20 for 20 trials
+**Skills Acquired:**
+- Vertex AI Hyperparameter Tuning service
+- Bayesian optimization concepts
+- Experiment tracking and comparison
+- Visualization of hyperparameter spaces
 
 ---
 
-### Week 5: Lab 4 - Model Monitoring & Drift Detection
+### Week 5: Lab 4 - Model Monitoring & Drift Detection ✅ COMPLETED
 
-**Duration:** 1 week  
+**Status:** ✅ Complete  
 **Difficulty:** Advanced
 
 #### Objectives
@@ -348,7 +296,7 @@ IF seasonal drift (expected):
 - Retraining automation script
 - Incident report template
 
-**Key Learnings:**
+**Key Learnings (Expected):**
 - Difference between drift types
 - When to retrain vs. when to investigate
 - How to set meaningful alert thresholds
@@ -356,11 +304,291 @@ IF seasonal drift (expected):
 
 ---
 
-## Phase 2: Theory Reinforcement (Weeks 6-8)
+
+### Week 6: Lab 5 - MLOps Services (Feature Store, Experiments, Metadata) 📋 NEW
+
+**Duration:** 1 week  
+**Difficulty:** Intermediate-Advanced  
+**Exam Relevance:** High — Feature Store and Experiments are core MLOps exam topics
+
+#### Objectives
+Retrofit the existing census pipeline with proper MLOps tooling. By adding these services to an already-working pipeline, you'll understand *why* they exist rather than using them in a vacuum.
+
+#### Why This Lab Matters
+Labs 1-4 built a complete ML pipeline, but used manual tracking (DataFrames, print statements). Production ML teams use managed services for reproducibility, feature sharing, and lineage tracking. The exam tests whether you know when and why to use these.
+
+#### Part 1: Vertex AI Experiments (Day 1-2)
+**Tasks:**
+- Create an experiment in Vertex AI
+- Re-run your Lab 3 hyperparameter experiments, logging to Vertex AI Experiments
+- Log metrics, parameters, and artifacts
+- Compare runs in the Vertex AI console
+
+**What This Replaces:** The manual DataFrame tracking you did in Lab 3.
+
+**Sample Code:**
+```python
+from google.cloud import aiplatform
+
+aiplatform.init(experiment='census-tuning-v2')
+
+with aiplatform.start_run('run-baseline') as run:
+    run.log_params({
+        'n_estimators': 100,
+        'max_depth': 5,
+        'learning_rate': 0.1
+    })
+    
+    # Train model...
+    
+    run.log_metrics({
+        'accuracy': 0.8710,
+        'roc_auc': 0.93,
+        'training_time_sec': 45
+    })
+```
+
+**Key Concepts:**
+- Experiments vs. runs vs. artifacts
+- Why managed experiment tracking beats spreadsheets
+- Comparing runs visually in the console
+- Experiment lineage
+
+**Deliverables:**
+- Vertex AI Experiment with multiple logged runs
+- Console comparison of runs
+- Understanding of when to use Experiments vs. manual tracking
+
+#### Part 2: Vertex AI Feature Store (Day 3-5)
+**Tasks:**
+- Create a Feature Store instance
+- Define feature groups for census data features
+- Ingest features from BigQuery
+- Serve features for both training and online prediction
+- Demonstrate consistent feature values across training and serving
+
+**Why Feature Store Matters:**
+You already know about train-serve skew from Lab 1 (TRANSFORM pattern in BigQuery ML). Feature Store solves the same problem at a broader scale — it ensures that the exact same feature computation used in training is available at serving time, across multiple models and teams.
+
+**Sample Code:**
+```python
+from google.cloud import aiplatform
+
+# Create feature group
+feature_group = aiplatform.FeatureGroup.create(
+    name='census_features',
+    source=aiplatform.FeatureGroup.BigQuerySource(
+        uri=f'bq://{PROJECT_ID}.census_dataset.census_features_table'
+    )
+)
+
+# Create individual features
+feature_group.create_feature(name='age_group')
+feature_group.create_feature(name='hours_ratio')
+feature_group.create_feature(name='education_num')
+
+# Online serving
+online_store = aiplatform.FeatureOnlineStore.create(
+    name='census_online_store',
+    feature_online_store_type='bigtable'  # or 'optimized'
+)
+```
+
+**Key Concepts:**
+- Feature Groups and Features
+- Online Store vs. Offline Store (serving vs. training)
+- Feature freshness and staleness
+- Feature Store vs. TRANSFORM pattern — different scales, same principle
+- When Feature Store is overkill vs. essential
+
+**Decision Framework:**
+```
+Single model, SQL-based features?
+  → TRANSFORM in BigQuery ML (Lab 1 approach)
+
+Multiple models sharing features, or team collaboration?
+  → Feature Store
+
+Real-time features with low-latency serving?
+  → Feature Store with Online Store
+
+Simple batch features, single data scientist?
+  → Just use your training script (Lab 2 approach)
+```
+
+**Deliverables:**
+- Configured Feature Store with census features
+- Demonstrated online and offline feature serving
+- Comparison: Feature Store vs. TRANSFORM vs. manual approach
+
+#### Part 3: Vertex AI Metadata & ML Lineage (Day 6-7)
+**Tasks:**
+- Explore the metadata automatically created by your previous labs
+- Understand artifact lineage (data → model → endpoint)
+- Create custom metadata for your pipeline
+- Query metadata to answer "which data was this model trained on?"
+
+**Sample Code:**
+```python
+from google.cloud import aiplatform
+
+# List artifacts from your previous training jobs
+artifacts = aiplatform.Artifact.list(
+    filter='schema_title="system.Model"'
+)
+
+for artifact in artifacts:
+    print(f"Model: {artifact.display_name}")
+    print(f"  Created: {artifact.create_time}")
+    print(f"  Metadata: {artifact.metadata}")
+
+# Query lineage: what data produced this model?
+context = aiplatform.Context.list(
+    filter=f'schema_title="system.Experiment"'
+)
+```
+
+**Key Concepts:**
+- Artifacts, Executions, and Contexts
+- Lineage graphs — tracing from prediction back to training data
+- Why metadata matters for compliance and debugging
+- Automatic vs. custom metadata
+
+**Deliverables:**
+- Metadata exploration notebook
+- Lineage documentation for your census pipeline
+- Understanding of when metadata matters (audit, compliance, debugging)
+
+**Expected Cost:** $5-10 (Feature Store online serving has hourly costs — delete promptly)
+
+**Key Learnings:**
+- Vertex AI Experiments for structured experiment tracking
+- Feature Store for centralized, versioned feature management
+- Metadata and lineage for ML governance
+- When each service adds value vs. unnecessary overhead
+- How these services connect to create a complete MLOps workflow
+
+---
+### Week 7: Lab 6 - Vertex AI Agent Builder 📋 NEW
+
+**Duration:** 1 week  
+**Difficulty:** Intermediate  
+**Exam Relevance:** High — Agent Builder, RAG, grounding, and Vertex AI Search appear frequently in scenario questions
+
+#### Objectives
+Build a RAG-based agent that answers questions from internal documentation. This directly covers the exam pattern: "build a self-help tool using internal docs with minimal maintenance."
+
+#### Why This Lab Matters
+The exam tests whether you can pick the right managed service for document Q&A scenarios. The key signals are:
+- "internal documentation" → needs grounding/RAG, not fine-tuning
+- "minimize maintenance" → managed service, not GKE
+- "build quickly" → Agent Builder, not custom pipeline
+
+#### Part 1: Prepare Your Knowledge Base (Day 1)
+**Tasks:**
+- Gather your certification notes, lab notebooks, and plan as source docs
+- Convert to supported formats (PDF, HTML, TXT)
+- Upload to a Cloud Storage bucket
+
+**Deliverables:**
+- Organized document corpus in GCS
+- Understanding of supported input formats
+
+#### Part 2: Create a Datastore (Day 2)
+**Tasks:**
+- Create a Vertex AI Search datastore
+- Ingest your documentation
+- Configure chunking strategy
+- Verify indexing completed
+
+**Key Concepts:**
+- Datastores vs. data connectors
+- Document chunking and how it affects retrieval quality
+- Structured vs. unstructured datastores
+
+**Deliverables:**
+- Configured datastore with indexed documents
+- Understanding of chunking/indexing pipeline
+
+#### Part 3: Build the Agent (Day 3-4)
+**Tasks:**
+- Create an agent in Agent Builder
+- Connect the datastore as a grounding source
+- Configure the agent's system instructions
+- Set up grounding parameters (citation, filtering)
+
+**Key Concepts:**
+- Grounding vs. fine-tuning — when to use which
+- How RAG retrieval works (embed → search → augment → generate)
+- Agent instructions and persona configuration
+- Citation and attribution in grounded responses
+
+**Deliverables:**
+- Working agent that answers questions about your certification materials
+- Configured grounding with citations
+
+#### Part 4: Test and Evaluate (Day 5)
+**Tasks:**
+- Test with known questions from your lab work
+- Evaluate answer quality and groundedness
+- Test edge cases (questions outside your docs)
+- Compare grounded vs. ungrounded responses
+
+**Test Questions (from your own experience):**
+```
+- "What accuracy did the custom model achieve vs AutoML?"
+- "How do you prevent train-serve skew in BigQuery ML?"
+- "What's the cost difference between AutoML and custom training?"
+- "When should you use Feature Store?"
+```
+
+**Deliverables:**
+- Test results document
+- Quality assessment of grounded responses
+- Comparison: grounded vs. ungrounded answers
+
+#### Part 5: Architecture & Exam Patterns (Day 6-7)
+**Tasks:**
+- Document the end-to-end architecture
+- Map Agent Builder components to exam question patterns
+- Create decision tree: Agent Builder vs. fine-tuning vs. custom RAG
+
+**Decision Framework:**
+```
+Need Q&A over existing docs?
+  → Agent Builder with datastore (grounding)
+
+Need model to learn new behavior/style?
+  → Fine-tuning
+
+Need custom retrieval logic or non-standard pipeline?
+  → Custom RAG on GKE with Vector Search
+
+Need simple keyword search?
+  → Vertex AI Search (no agent needed)
+```
+
+**Deliverables:**
+- Architecture diagram
+- Agent Builder decision matrix
+- Practice exam question analysis
+
+**Expected Cost:** $2-5 (search queries are pay-per-use)
+
+**Key Learnings:**
+- Vertex AI Agent Builder end-to-end workflow
+- RAG Engine and datastore configuration
+- Grounding concepts and citation
+- Vertex AI Search vs. Vector Search
+- When to use Agent Builder vs. fine-tuning vs. custom solutions
+
+---
+
+## Phase 2: Theory Reinforcement (Weeks 8-10)
 
 Now that you've **done** the work, theory will make much more sense.
 
-### Week 6: Feature Engineering Deep Dive
+### Week 8: Feature Engineering Deep Dive
 
 **Resources:** Machine Learning Mastery
 
@@ -393,7 +621,7 @@ Now that you've **done** the work, theory will make much more sense.
 
 ---
 
-### Week 7: Algorithm Deep Dives
+### Week 9: Algorithm Deep Dives
 
 **Resources:** Machine Learning Mastery + Original Papers
 
@@ -445,7 +673,7 @@ def gradient_descent(X, y, theta, alpha, iterations):
 
 ---
 
-### Week 8: Model Evaluation & Selection
+### Week 10: Model Evaluation & Selection
 
 **Resources:** Machine Learning Mastery + Academic Papers
 
@@ -493,21 +721,23 @@ For each of these business problems, document:
 
 ---
 
-## Phase 3: Certification-Specific Prep (Weeks 9-10)
+## Phase 3: Certification-Specific Prep (Weeks 11-12)
 
-### Week 9: GCP Services Deep Dive
+### Week 11: GCP Services Deep Dive
 
 #### Topics to Master
 
 1. **Service Comparison Matrix**
 
-| Use Case | BigQuery ML | AutoML | Vertex AI Custom | Pre-trained APIs |
-|----------|-------------|---------|------------------|------------------|
-| Tabular data, SQL users | ✅ Best | ⚠️ Okay | ❌ Overkill | N/A |
-| Complex deep learning | ❌ No | ⚠️ Limited | ✅ Best | N/A |
-| No ML expertise | ⚠️ Need SQL | ✅ Best | ❌ Too hard | ✅ Best |
-| Custom architecture | ❌ No | ❌ No | ✅ Best | N/A |
-| Time-to-market priority | ✅ Fast | ✅ Fast | ❌ Slow | ✅ Fastest |
+| Use Case | BigQuery ML | AutoML | Vertex AI Custom | Pre-trained APIs | Agent Builder |
+|----------|-------------|---------|------------------|------------------|---------------|
+| Tabular data, SQL users | ✅ Best | ⚠️ Okay | ❌ Overkill | N/A | N/A |
+| Complex deep learning | ❌ No | ⚠️ Limited | ✅ Best | N/A | N/A |
+| No ML expertise | ⚠️ Need SQL | ✅ Best | ❌ Too hard | ✅ Best | ✅ Best |
+| Custom architecture | ❌ No | ❌ No | ✅ Best | N/A | N/A |
+| Time-to-market priority | ✅ Fast | ✅ Fast | ❌ Slow | ✅ Fastest | ✅ Fast |
+| Q&A over internal docs | N/A | N/A | ❌ Overkill | N/A | ✅ Best |
+| Conversational agents | N/A | N/A | ⚠️ Custom | N/A | ✅ Best |
 
 2. **ML Ops Patterns**
    - CI/CD for ML (Vertex AI Pipelines)
@@ -515,6 +745,8 @@ For each of these business problems, document:
    - Shadow deployments
    - Champion/challenger patterns
    - Model versioning and rollback
+   - Feature Store integration patterns
+   - Experiment tracking workflows
 
 3. **Specialized Services**
    - Vision AI (image classification, object detection, OCR)
@@ -522,12 +754,15 @@ For each of these business problems, document:
    - Speech-to-Text / Text-to-Speech
    - Recommendations AI
    - Document AI
+   - Agent Builder (agents, datastores, RAG Engine)
+   - Vertex AI Search and Vector Search
 
 4. **Cost Optimization**
    - Preemptible VMs for training
    - Batch prediction vs. online serving costs
    - Reserved capacity vs. on-demand
    - BigQuery ML vs. Vertex AI cost comparison
+   - Feature Store online vs. offline serving costs
 
 5. **Ethical AI & Fairness**
    - What-If Tool usage
@@ -549,7 +784,7 @@ For each of these business problems, document:
 
 ---
 
-### Week 10: Practice Exams & Weak Area Labs
+### Week 12: Practice Exams & Weak Area Labs
 
 #### Day 1-3: Practice Exams
 **Resources:**
@@ -640,13 +875,15 @@ predictions = endpoint.predict(...)
 | Week | Focus | Time Investment | Deliverable |
 |------|-------|----------------|-------------|
 | 1 | Lab 1: BigQuery ML | 3-4 hours | ✅ 3 trained models + analysis |
-| 2-3 | Lab 2: Vertex AI Pipeline | 10-15 hours | Deployed model + architecture doc |
-| 4 | Lab 3: Hyperparameter Tuning | 8-12 hours | Tuning results + visualization |
-| 5 | Lab 4: Monitoring | 8-12 hours | Drift detection runbook |
-| 6-8 | Theory deep-dives (ML Mastery) | 30-40 hours | Algorithm implementations + notes |
-| 9-10 | Cert-specific prep | 35-45 hours | Practice exam scores + weak area labs |
+| 2-3 | Lab 2: Vertex AI Pipeline | 10-15 hours | ✅ Deployed model + architecture doc |
+| 4 | Lab 3: Hyperparameter Tuning | 8-12 hours | ✅ Tuning results + visualization |
+| 5 | Lab 4: Monitoring & Drift | 8-12 hours | ✅ Drift detection runbook |
+| 6 | Lab 5: MLOps Services | 8-12 hours | 📋 Feature Store + Experiments + Metadata |
+| 7 | Lab 6: Agent Builder | 6-10 hours | 📋 Working agent + architecture doc |
+| 8-10 | Theory deep-dives (ML Mastery) | 30-40 hours | Algorithm implementations + notes |
+| 11-12 | Cert-specific prep | 35-45 hours | Practice exam scores + weak area labs |
 
-**Total Time:** ~100-130 hours over 10 weeks = **10-13 hours/week**
+**Total Time:** ~115-150 hours over 12 weeks = **10-13 hours/week**
 
 ---
 
@@ -658,9 +895,11 @@ predictions = endpoint.predict(...)
 | Lab 2: Vertex AI (AutoML + Custom) | $15-25 |
 | Lab 3: Hyperparameter Tuning | $10-20 |
 | Lab 4: Monitoring | $5-10 |
+| Lab 5: MLOps Services (Feature Store) | $5-10 |
+| Lab 6: Agent Builder | $2-5 |
 | Practice Exams (optional) | $20-40 |
 | Certification Exam | $200 |
-| **Total** | **$250-300** |
+| **Total** | **$260-310** |
 
 **Note:** Can reduce costs by:
 - Using GCP free tier ($300 credits)
@@ -670,16 +909,41 @@ predictions = endpoint.predict(...)
 
 ---
 
+## GCP Services Coverage Map
+
+This tracks which Vertex AI services are covered by which lab:
+
+| Service | Lab | Status |
+|---------|-----|--------|
+| BigQuery ML | Lab 1 | ✅ |
+| Vertex AI Datasets | Lab 2 | ✅ |
+| AutoML Training | Lab 2 | ✅ |
+| Custom Training | Lab 2 | ✅ |
+| Model Deployment / Endpoints | Lab 2 | ✅ |
+| Hyperparameter Tuning | Lab 3 | ✅ |
+| Model Monitoring | Lab 4 | ✅ |
+| Agent Builder | Lab 6 | 📋 |
+| RAG Engine / Datastores | Lab 6 | 📋 |
+| Vertex AI Search | Lab 6 | 📋 |
+| Feature Store | Lab 5 | 📋 |
+| Experiments | Lab 5 | 📋 |
+| Metadata / Lineage | Lab 5 | 📋 |
+| Vertex AI Pipelines | Week 12 mini-lab (if needed) | 📋 |
+| Vector Search | Week 12 mini-lab (if needed) | 📋 |
+
+---
+
 ## Success Criteria
 
-**By end of Week 10, you should be able to:**
+**By end of Week 12, you should be able to:**
 
 ✅ **Technical Skills:**
 - Build production ML pipelines on GCP
 - Choose appropriate GCP ML services for different scenarios
-- Implement proper MLOps practices
+- Implement proper MLOps practices (Feature Store, Experiments, Monitoring)
 - Debug and optimize model performance
 - Monitor and maintain production models
+- Build RAG-based agents with Agent Builder
 
 ✅ **Theoretical Knowledge:**
 - Explain bias-variance tradeoff
@@ -692,6 +956,7 @@ predictions = endpoint.predict(...)
 - Confidently answer scenario-based questions
 - Understand GCP pricing and optimization
 - Know ethical AI best practices
+- Distinguish between Agent Builder, fine-tuning, and custom RAG scenarios
 
 ---
 
@@ -742,6 +1007,7 @@ Create a learning journal:
 gcloud compute instances list
 gcloud ai models list
 gcloud ai endpoints list
+gcloud ai feature-online-stores list  # NEW: check Feature Store
 ```
 
 ### 5. **Schedule Strategically**
@@ -760,7 +1026,7 @@ gcloud ai endpoints list
 ## Adaptation Guidelines
 
 **If you're ahead of schedule:**
-- Add bonus labs (e.g., build a recommendation system)
+- Add bonus labs (e.g., build a recommendation system, Vertex AI Pipelines)
 - Explore advanced topics (federated learning, model distillation)
 - Contribute to open-source ML projects
 
@@ -800,23 +1066,3 @@ gcloud ai endpoints list
    - NLP/LLMs
    - Recommendation Systems
    - MLOps Engineering
-
----
-
-## Contact & Support
-
-**For questions on specific labs:**
-- Start a new Claude chat with context: "I'm working on Week X Lab Y from my GCP ML certification plan..."
-- Include specific error messages or confusion points
-- Share code snippets for debugging
-
-**For general guidance:**
-- Review this plan periodically
-- Adjust timeline based on your progress
-- Remember: Consistent progress > perfect execution
-
----
-
-**Good luck on your certification journey! 🚀**
-
-*Remember: You've already completed Lab 1 successfully. You have the skills to do this. Stay consistent, stay curious, and keep building!*
