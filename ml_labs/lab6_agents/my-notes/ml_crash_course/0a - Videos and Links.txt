@@ -1,0 +1,35 @@
+
+**Useful Links**
+
+Tensoflow Playground
+https://github.com/tensorflow/playground
+
+Tensorflow Data Visualisation
+https://projector.tensorflow.org/
+
+
+**Course Vids**
+
+Gradient Descent
+https://youtu.be/QoK1nNAURw4
+
+Logistic Regression
+https://youtu.be/72AHKztZN44
+
+Classification
+https://youtu.be/QM0sYbEQSkM
+
+Generalization
+https://youtu.be/TyT8i8YIcwI
+
+Neural Networks Intro
+https://www.youtube.com/watch?v=0kZIGB_dG80
+
+Backpropogation
+https://youtu.be/ovCyBmlrZGg
+
+Embeddings
+https://youtu.be/my5wFNQpFO0
+
+Fairness
+https://youtu.be/NIwexiIjASA

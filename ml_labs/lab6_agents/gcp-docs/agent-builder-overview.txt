@@ -1,0 +1,130 @@
+Source: https://cloud.google.com/agent-builder/overview
+Downloaded: 2026-02-22
+
+Home
+Documentation
+AI and ML
+Vertex AI Agent Builder
+Guides
+Send feedback
+Vertex AI Agent Builder overview
+Stay organized with collections
+Save and categorize content based on your preferences.
+Vertex AI Agent Builder is a suite of products that help developers
+build, scale, and govern AI agents in production.
+Vertex AI Agent Builder provides a full-stack, secure foundation that
+supports the entire agent lifecycle:
+Build
+: Build agents using frameworks such as Agent Development Kit (ADK)
+or any other open-source framework of your choice.
+Agent Development Kit (ADK)
+is an
+open-source framework that simplifies the process of building sophisticated
+multi-agent systems while maintaining precise control over agent behavior.
+Agent Garden
+(Supported in
+preview
+) is a library in the Google Cloud console where you can find
+and explore sample agents and tools that are designed to accelerate your
+development. In the Agent Garden, you can find the following:
+Agents
+: These are prebuilt, end-to-end solutions for specific use
+cases. For example, you might find an agent designed for customer
+service, data analysis, or creative writing. These agents are ready to
+be used and can be customized to fit your needs. Only Google
+can publish agents to the Agent Garden. To use an agent from the
+garden, you can select it and deploy it to your project.
+Tools
+: These are individual components that you can add to your own
+agents. Tools provide specific functionalities, like interacting with a
+database, calling an external API, or performing a search. You can
+browse the available tools in the Agent Garden and integrate them into
+your agents built with the Agent Development Kit (ADK). This lets you
+extend your agent's capabilities without having to build these
+functionalities from scratch.
+Go to Agent Garden
+Agent Designer
+(
+Preview
+) is a
+low-code visual designer that lets you design and test your agent.
+Experiment with your agent in Agent Designer before transitioning
+development to code using
+Agent Development Kit
+.
+Go to Agent Designer
+Scale
+: Scale your agents into production with built-in testing, release
+management, and reliability at a global and secure scale.
+Vertex AI Agent Engine
+is a set of services that enables developers to deploy, manage, and
+scale AI agents in production. Vertex AI Agent Engine
+offers services such as a fully-managed runtime, evaluation, Sessions,
+Memory Bank, and Code Execution. Understand agent behavior with
+Google
+Cloud Trace
+(supporting
+OpenTelemetry
+),
+Cloud Monitoring
+, and
+Cloud Logging
+.
+Agent Tools
+are tools that you can equip your ADK agent to use, including:
+Built-in tools
+such as
+Grounding with Google Search
+,
+Vertex AI Search
+, and
+Code Execution
+RAG Engine
+for retrieval-augmented generation (RAG)
+Google Cloud tools
+to connect to:
+Your APIs managed in
+Apigee API Hub
+100+ enterprise applications through
+Integration Connectors
+Custom integrations with
+Application Integration
+Model Context Protocol (MCP) tools
+Ecosystem tools
+such as LangChain tools, CrewAI tools, and
+GenAI Toolbox for Databases
+Govern
+: Monitor what your agents are doing with an audit trail for
+end-to-end observability.
+Detect threats with Security Command Center
+:
+Agent Engine Threat
+Detection
+(Preview) is a built-in service of Security Command Center that helps you detect and
+investigate potential attacks on agents that are deployed to
+Vertex AI Agent Engine Runtime.
+Agent identity
+(Preview):
+Use
+Identity Access Management (IAM)
+agent identity to provide security and access management features when using agents on Vertex AI Agent Engine Runtime.
+Tools in the
+Cloud API Registry
+(Preview): Use
+Cloud API Registry in the Google Cloud console to view and manage the MCP servers
+and tools your agent has access to.
+The following diagram shows the components of Vertex AI Agent Builder:
+To learn more about AI agents in general, see the following:
+Blog post on
+multi-agent systems with Vertex AI
+What are AI Agents?
+Vertex AI Agent Builder
+Workflow for building and deploying agents
+Discover agent samples and tools specific to your use cases in the
+Agent Garden
+.
+Build and test your agent using the Agent Development Kit.
+Deploy your agent to Vertex AI Agent Engine.
+What's next
+Agent Development Kit overview
+Send feedback

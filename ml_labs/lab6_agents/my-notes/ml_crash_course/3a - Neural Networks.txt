@@ -1,0 +1,448 @@
+# Neural networks
+
+**Learning objectives**
+
+- Explain the motivation for building neural networks, and the use cases they address.
+- Define and explain the function of the key components of a deep neural network architecture:
+    - **[Nodes](https://developers.google.com/machine-learning/glossary#node-neural-network)**
+    - **[Hidden layers](https://developers.google.com/machine-learning/glossary#hidden_layer)**
+    - **[Activation functions](https://developers.google.com/machine-learning/glossary#activation_function)**
+- Develop intuition around how neural network predictions are made, by stepping through the inference process.
+- Build a high-level intuition of how neural networks are trained, using the backpropagation algorithm.
+- Explain how neural networks can be used to perform two types of multi-class classification: one-vs.-all and one-vs.-one.
+
+You may recall from the [Feature cross exercises](https://developers.google.com/machine-learning/crash-course/categorical-data/feature-cross-exercises) in the [Categorical data module](https://developers.google.com/machine-learning/crash-course/categorical-data), that the following classification problem is nonlinear:
+
+![[Pasted image 20251129135815.png]]
+**Figure 1.** Nonlinear classification problem. A linear function cannot cleanly separate all the blue dots from the orange dots.
+
+![[Pasted image 20251129135837.png]]
+**Figure 2.** By adding the feature cross _x_1_x_2, the linear model can learn a hyperbolic shape that separates the blue dots from the orange dots.
+
+Now consider the following dataset:
+
+![[Pasted image 20251129135850.png]]
+**Figure 3.** A more difficult nonlinear classification problem.
+
+You may also recall from the [Feature cross exercises](https://developers.google.com/machine-learning/crash-course/categorical-data/feature-cross-exercises) that determining the correct feature crosses to fit a linear model to this data took a bit more effort and experimentation.
+
+But what if you didn't have to do all that experimentation yourself? [**Neural networks**](https://developers.google.com/machine-learning/glossary#neural_network) are a family of model architectures designed to find [**nonlinear**](https://developers.google.com/machine-learning/glossary#nonlinear) patterns in data. During training of a neural network, the [**model**](https://developers.google.com/machine-learning/glossary#model) automatically learns the optimal feature crosses to perform on the input data to minimize loss.
+
+In the following sections, we'll take a closer look at how neural networks work.
+
+# Neural networks: Nodes and hidden layers
+![[Pasted image 20251129161201.png]]
+![[Pasted image 20251130093640.png]]
+
+Calculations
+
+= Linear(w11 x1 + w21 x2 + w31 x3 + b)
+
+= Linear(-0.05 * 1.00 + 0.05 * **2.00** + 0.05 * 3.00 + 0.66)
+
+= Linear(-0.05 + 0.10 + 0.15 + 0.66)
+
+= Linear(0.86)
+
+= 0.86
+
+Calculations
+
+= Linear(w11 x1 + w21 x2 + w31 x3 + b)
+
+= Linear(-0.05 * 1.00 + 0.04 * **2.50** + 0.08 * 3.00 + 0.66)
+
+= Linear(-0.05 + 0.10 + 0.25 + 0.66)
+
+= Linear(0.96)
+
+= 0.96
+## Adding layers to the network
+
+Note that when you adjusted the weight and bias values of the network in [Exercise 1](https://developers.google.com/machine-learning/crash-course/neural-networks/nodes-hidden-layers#exercise_1), that didn't change the overall mathematical relationship between input and output. Our model is still a linear model.
+
+But what if we add another layer to the network, in between the input layer and the output layer? In neural network terminology, additional layers between the input layer and the output layer are called [**hidden layers**](https://developers.google.com/machine-learning/glossary#hidden_layer), and the nodes in these layers are called [**neurons**](https://developers.google.com/machine-learning/glossary#neuron).
+
+The value of each neuron in the hidden layer is calculated the same way as the output of a linear model: take the sum of the product of each of its inputs (the neurons in the previous network layer) and a unique weight parameter, plus the bias. Similarly, the neurons in the next layer (here, the output layer) are calculated using the hidden layer's neuron values as inputs.
+
+This new hidden layer allows our model to recombine the input data using another set of parameters. Can this help our model learn nonlinear relationships?
+
+## Exercise 2
+
+We've added a hidden layer containing four neurons to the model.
+
+![[Pasted image 20251130094218.png]]
+Calculations
+
+= Linear(w11 x1 + w21 x2 + w31 x3 + w41 x4 + b)
+
+= Linear(-0.10 * 2.24 + -0.20 * 0.67 + 0.29 * 1.02 + -0.29 * 1.49 + 0.27)
+
+= Linear(-0.23 + -0.14 + 0.29 + -0.44 + 0.27)
+
+= Linear(-0.23)
+
+= -0.23
+
+How many [**parameters**](https://developers.google.com/machine-learning/glossary#parameter) (weights and biases) does this neural network model have?
+
+4
+
+12
+
+16
+
+**21**
+
+*There are 4 parameters used to calculate each of the 4 node values in the hidden layer—3 weights (one for each input value) and a bias—which sums to 16 parameters. Then there are 5 parameters used to calculate the output value: 4 weights (one for each node in the hidden layer) and a bias. In total, this neural network has 21 parameters.*
+
+Try modifying the model parameters, and observe the effect on the hidden-layer node values and the output value (you can review the Calculations panel below to see how these values were calculated).
+
+Can this model learn nonlinearities?
+
+Yes
+
+**No**
+
+*If you click on each of the nodes in the hidden layer and review the calculations below, you'll see that all of them are linear (comprising multiplication and addition operations).*
+
+*If you then click on the output node and review the calculation below, you'll see that this calculation is also linear. Linear calculations performed on the output of linear calculations are also linear, which means this model cannot learn nonlinearities.*
+
+# Neural networks: Activation functions
+
+You saw in the [previous exercise](https://developers.google.com/machine-learning/crash-course/neural-networks/nodes-hidden-layers#exercise_2) that just adding hidden layers to our network wasn't sufficient to represent nonlinearities. Linear operations performed on linear operations are still linear.
+
+How can you configure a neural network to learn nonlinear relationships between values? We need some way to insert nonlinear mathematical operations into a model.
+
+If this seems somewhat familiar, that's because we've actually applied nonlinear mathematical operations to the output of a linear model earlier in the course. In the [Logistic Regression](https://developers.google.com/machine-learning/crash-course/logistic-regression) module, we adapted a linear regression model to output a continuous value from 0 to 1 (representing a probability) by passing the model's output through a [**sigmoid function**](https://developers.google.com/machine-learning/glossary#sigmoid-function).
+
+We can apply the same principle to our neural network. Let's revisit our model from [Exercise 2](https://developers.google.com/machine-learning/crash-course/neural-networks/nodes-hidden-layers#exercise_2) earlier, but this time, before outputting the value of each node, we'll first apply the sigmoid function:
+![[Pasted image 20251130100216.png]]
+Try stepping through the calculations of each node by clicking the **>|** button (to the right of the play button). Review the mathematical operations performed to calculate each node value in the _Calculations_ panel below the graph. Note that each node's output is now a sigmoid transform of the linear combination of the nodes in the previous layer, and the output values are all squished between 0 and 1.
+
+Here, the sigmoid serves as an [**activation function**](https://developers.google.com/machine-learning/glossary#activation_function) for the neural network, a nonlinear transform of a neuron's output value before the value is passed as input to the calculations of the next layer of the neural network.
+
+Now that we've added an activation function, adding layers has more impact. Stacking nonlinearities on nonlinearities lets us model very complicated relationships between the inputs and the predicted outputs. In brief, each layer is effectively learning a more complex, higher-level function over the raw inputs. If you'd like to develop more intuition on how this works, see [Chris Olah's excellent blog post](https://colah.github.io/posts/2014-03-NN-Manifolds-Topology/).
+
+## Common activation functions
+
+Three mathematical functions that are commonly used as activation functions are sigmoid, tanh, and ReLU.
+![[Pasted image 20251130100248.png]]
+![[Pasted image 20251130100302.png]]
+![[Pasted image 20251130100325.png]]
+## Summary
+
+The following video provides a recap of everything you've learned thus far about how neural networks are constructed:
+
+Now our model has all the standard components of what people usually mean when they refer to a neural network:
+
+- A set of nodes, analogous to neurons, organized in layers.
+- A set of learned weights and biases representing the connections between each neural network layer and the layer beneath it. The layer beneath may be another neural network layer, or some other kind of layer.
+- An activation function that transforms the output of each node in a layer. Different layers may have different activation functions.
+
+A caveat: neural networks aren't necessarily always better than feature crosses, but neural networks do offer a flexible alternative that works well in many cases.
+
+# Neural Networks: Training using backpropagation
+
+[**Backpropagation**](https://developers.google.com/machine-learning/glossary#backpropagation) is the most common training algorithm for neural networks. It makes gradient descent feasible for multi-layer neural networks. Many machine learning code libraries (such as [Keras](https://keras.io/)) handle backpropagation automatically, so you don't need to perform any of the underlying calculations yourself. Check out the following video for a conceptual overview of how backpropagation works:
+
+To learn more about building image models, check out the [Image Classification](https://developers.google.com/machine-learning/practica/image-classification) course.
+
+## Best practices for neural network training
+
+This section explains backpropagation's failure cases and the most common way to regularize a neural network.
+
+**NOTE:** The backpropagation training algorithm makes use of the calculus concept of a [gradient](https://wikipedia.org/wiki/Gradient) to adjust model weights to minimize loss. Understanding and debugging the issues below usually requires some background in calculus.
+
+### Vanishing Gradients
+
+The [**gradients**](https://developers.google.com/machine-learning/glossary#gradient) for the lower neural network layers (those closer to the input layer) can become very small. In [**deep networks**](https://developers.google.com/machine-learning/glossary#deep-model) (networks with more than one hidden layer), computing these gradients can involve taking the product of many small terms.
+
+When the gradient values approach 0 for the lower layers, the gradients are said to "vanish". Layers with vanishing gradients train very slowly, or not at all.
+
+The ReLU activation function can help prevent vanishing gradients.
+
+### Exploding Gradients
+
+If the weights in a network are very large, then the gradients for the lower layers involve products of many large terms. In this case you can have exploding gradients: gradients that get too large to converge.
+
+Batch normalization can help prevent exploding gradients, as can lowering the learning rate.
+
+### Dead ReLU Units
+
+Once the weighted sum for a ReLU unit falls below 0, the ReLU unit can get stuck. It outputs 0, contributing nothing to the network's output, and gradients can no longer flow through it during backpropagation. With a source of gradients cut off, the input to the ReLU may not ever change enough to bring the weighted sum back above 0.
+
+Lowering the learning rate can help keep ReLU units from dying.
+
+There are also many variants of ReLU that were designed to address this specific problem, such as [LeakyReLU](https://keras.io/api/layers/activation_layers/leaky_relu/), which you may want to consider using as an activation function to prevent dead ReLU units.
+
+## Dropout Regularization
+
+Yet another form of regularization, called [**dropout regularization**](https://developers.google.com/machine-learning/glossary#dropout_regularization), is useful for neural networks. It works by randomly "dropping out" unit activations in a network for a single gradient step. The more you drop out, the stronger the regularization:
+
+- 0.0 = No dropout regularization.
+- 1.0 = Drop out all nodes. The model learns nothing.
+- Values between 0.0 and 1.0 = More useful.
+- 
+# Neural networks: Interactive exercises
+
+In the interactive exercises below, you'll further explore the inner workings of neural networks. First, you'll see how parameter and hyperparameter changes affect the network's predictions. Then you'll use what you've learned to train a neural network to fit nonlinear data.
+![[Pasted image 20251130134831.png]]
+## Exercise 1
+
+The following widget sets up a neural network with the following configuration:
+
+- Input layer with 3 neurons containing the values `0.00`, `0.00`, and `0.00`
+- Hidden layer with 4 neurons
+- Output layer with 1 neuron
+- [**ReLU**](https://developers.google.com/machine-learning/glossary#ReLU) activation function applied to all hidden layer nodes and the output node
+
+Review the initial setup of the network (note: **do not** click the **▶️** or **>|** buttons yet), and then complete the tasks below the widget.
+### Task 1
+
+The values for the three input features to the neural network model are all `0.00`. Click each of the nodes in the network to see all the initialized values. Before hitting the Play (**▶️**) button, answer this question:
+
+What kind of output value do you think will be produced: positive, negative, or 0?
+
+Positive output value
+
+Negative output value
+
+**Output value of 0**
+
+**Click here for an explanation**
+
+*The exact output value you get will vary based on how the weight and bias parameters are randomly initialized. However, since each neuron in the input layer has a value of 0, the weights used to calculate the hidden-layer node values will all be zeroed out. For example, the first hidden layer node calculation will be:*
+
+*y = ReLU(w11* 0.00 + w21* 0.00 + w31* 0.00 + b)*
+
+*y = ReLU(b)*
+
+*So each hidden-layer node's value will be equal to the ReLU value of the bias (b), which will be 0 if b is negative and b itself if b is 0 or positive.*
+
+*The value of the output node will then be calculated as follows:*
+
+*y = ReLU(w11* x11 + w21* x21 + w31* x31 + w41* x41 + b)*
+
+### Task 2
+
+Before modifying the neural network, answer the following question:
+
+If you add another hidden layer to the neural network after the first hidden layer, and give this new layer 3 nodes, keeping all input and weight/bias parameters the same, which other nodes' calculations will be affected?
+
+All the nodes in the network, except the input nodes
+
+Just the nodes in the first hidden layer
+
+**Just the output node**
+
+Now modify the neural network to add a new hidden layer with 3 nodes as follows:
+
+1. Click the **+** button to the left of the text **1 hidden layer** to add a new hidden layer before the output layer.
+2. Click the **+** button above the new hidden layer twice to add 2 more nodes to the layer.
+
+Was your answer above correct?
+
+**Click here for an explanation**
+
+*Only the output node changes. Because inference for this neural network is "feed-forward" (calculations progress from start to finish), the addition of a new layer to the network will only affect nodes after the new layer, not those that precede it.*
+
+### Task 3
+
+Click the second node (from the top) in the first hidden layer of the network graph. Before making any changes to the network configuration, answer the following question:
+
+If you change the value of the weight w12 (displayed below the first input node, x1), which other nodes' calculations _could_ be affected for some input values?
+
+None
+
+**The second node in the first hidden layer, all the nodes in the second hidden layer, and the output node.**
+
+All the nodes in the first hidden layer, the second hidden layer, and the output layer.
+
+Now, click in the text field for the weight w12 (displayed below the first input node, x1), change its value to `5.00`, and hit Enter. Observe the updates to the graph.
+
+Was your answer correct? Be careful when verifying your answer: if a node value doesn't change, does that mean the underlying calculation didn't change?
+
+**Click here for an explanation**
+
+The only node affected in the first hidden layer is the second node (the one you clicked). The value calculations for the other nodes in the first hidden layer do not contain w12 as a parameter, so they are not affected. All the nodes in the second hidden layer are affected, as their calculations depend on the value of the second node in the first hidden layer. Similarly, the output node value is affected because its calculations depend on the values of the nodes in the second hidden layer.
+
+Did you think the answer was "none" because none of the node values in the network changed when you changed the weight value? Note that an underlying calculation for a node may change without changing the node's value (e.g., ReLU(0) and ReLU(–5) both produce an output of 0). Don't make assumptions about how the network was affected just by looking at the node values; make sure to review the calculations as well.
+
+## Exercise 2
+
+In the [Feature cross exercises](https://developers.google.com/machine-learning/crash-course/categorical-data/feature-cross-exercises) in the [Categorical data module](https://developers.google.com/machine-learning/crash-course/categorical-data), you manually constructed feature crosses to fit nonlinear data. Now, you'll see if you can build a neural network that can automatically learn how to fit nonlinear data during training.
+
+**Your task:** configure a neural network that can separate the orange dots from the blue dots in the diagram below, achieving a loss of less than 0.2 on both the training and test data.
+
+**Instructions:**
+
+In the interactive widget below:
+
+1. Modify the neural network hyperparameters by experimenting with some of the following config settings:
+    - Add or remove hidden layers by clicking the **+** and **-** buttons to the left of the **HIDDEN LAYERS** heading in the network diagram.
+    - Add or remove neurons from a hidden layer by clicking the **+** and **-** buttons above a hidden-layer column.
+    - Change the learning rate by choosing a new value from the **Learning rate** drop-down above the diagram.
+    - Change the activation function by choosing a new value from the **Activation** drop-down above the diagram.
+2. Click the Play (▶️) button above the diagram to train the neural network model using the specified parameters.
+3. Observe the visualization of the model fitting the data as training progresses, as well as the [**Test loss**](https://developers.google.com/machine-learning/glossary#test-loss) and [**Training loss**](https://developers.google.com/machine-learning/glossary#training-loss) values in the **Output** section.
+4. If the model does not achieve loss below 0.2 on the test and training data, click reset, and repeat steps 1–3 with a different set of configuration settings. Repeat this process until you achieve the preferred results.
+
+**Click here for our solution**
+
+We were able to achieve both test and training loss below 0.2 by:
+
+- Adding 1 hidden layer containing 3 neurons.
+- Choosing a learning rate of 0.01.
+- Choosing an activation function of ReLU.
+![[Pasted image 20251130140045.png]]
+
+# Neural networks: Multi-class classification
+
+Earlier, you encountered [**binary classification**](https://developers.google.com/machine-learning/glossary#binary-classification) models that could pick between one of _two_ possible choices, such as whether:
+
+- A given email is spam or not spam.
+- A given tumor is malignant or benign.
+
+In this section, we'll investigate [**multi-class classification**](https://developers.google.com/machine-learning/glossary#multi-class) models, which can pick from _multiple_ possibilities. For example:
+
+- Is this dog a beagle, a basset hound, or a bloodhound?
+- Is this flower a Siberian Iris, Dutch Iris, Blue Flag Iris, or Dwarf Bearded Iris?
+- Is that plane a Boeing 747, Airbus 320, Boeing 777, or Embraer 190?
+- Is this an image of an apple, bear, candy, dog, or egg?
+
+Some real-world multi-class problems entail choosing from _millions_ of separate classes. For example, consider a multi-class classification model that can identify the image of just about anything.
+
+This section details the two main variants of multi-class classification:
+
+- [**one-vs.-all**](https://developers.google.com/machine-learning/glossary#one-vs.-all)
+- **one-vs.-one**, which is usually known as [**softmax**](https://developers.google.com/machine-learning/glossary#softmax)
+
+## One versus all
+
+_One-vs.-all_ provides a way to use binary classification for a series of yes or no predictions across multiple possible labels.
+
+Given a classification problem with N possible solutions, a one-vs.-all solution consists of N separate binary classifiers—one binary classifier for each possible outcome. During training, the model runs through a sequence of binary classifiers, training each to answer a separate classification question.
+
+For example, given a picture of a piece of fruit, four different recognizers might be trained, each answering a different yes/no question:
+
+1. Is this image an apple?
+2. Is this image an orange?
+3. Is this image a banana?
+4. Is this image a grape?
+
+The following image illustrates how this works in practice.
+
+![[Pasted image 20251130140302.png]]
+**Figure 7. An image of a pear being passed as input to four different binary classifiers. The first, second, and fourth models (predicting whether or not the image is an apple, orange, or grape, respectively) predict the negative class. The third model (predicting whether or not the image is a pear) predicts the positive class.**
+
+For more on how binary classifiers make predictions (setting a classification threshold to convert numerical model output into a positive or negative label), see the [Classification](https://developers.google.com/machine-learning/crash-course/classification) module.
+
+This approach is fairly reasonable when the total number of classes is small, but becomes increasingly inefficient as the number of classes rises.
+
+We can create a significantly more efficient one-vs.-all model with a deep neural network in which each output node represents a different class. The following image illustrates this approach.
+
+![[Pasted image 20251130140318.png]]
+**Figure 8. The same one-vs.-all classification tasks accomplished using a neural net model. A sigmoid activation function is applied to the output layer, and each output value represents the probability that the input image is a specified fruit. This model predicts that there is a 84% chance that the image is a pear, and a 7% chance that the image is a grape.**
+
+## One versus one (softmax)
+
+You may have noticed that the probability values in the output layer of Figure 8 don't sum to 1.0 (or 100%). (In fact, they sum to 1.43.) In a one-vs.-all approach, the probability of each binary set of outcomes is determined independently of all the other sets. That is, we're determining the probability of "apple" versus "not apple" without considering the likelihood of our other fruit options: "orange", "pear", or "grape."
+
+But what if we want to predict the probabilities of each fruit relative to each other? In this case, instead of predicting "apple" versus "not apple", we want to predict "apple" versus "orange" versus "pear" versus "grape". This type of multi-class classification is called _one-vs.-one classification_.
+
+We can implement a one-vs.-one classification using the same type of neural network architecture used for one-vs.-all classification, with one key change. We need to apply a different transform to the output layer.
+
+For one-vs.-all, we applied the sigmoid activation function to each output node independently, which resulted in an output value between 0 and 1 for each node, but did not guarantee that these values summed to exactly 1.
+
+For one-vs.-one, we can instead apply a function called _softmax_, which assigns decimal probabilities to each class in a multi-class problem such that all probabilities add up to 1.0. This additional constraint helps training converge more quickly than it otherwise would.
+
+#### Click the plus icon to see the softmax equation.
+
+The softmax equation is as follows:
+![[Pasted image 20251130140336.png]]
+
+Note that this formula basically extends the formula for logistic regression into multiple classes.
+
+The following image re-implements our one-vs.-all multi-class classification task as a one-vs.-one task. Note that in order to perform softmax, the hidden layer directly preceding the output layer (called the softmax layer) must have the same number of nodes as the output layer.
+
+![[Pasted image 20251130140350.png]]
+**Figure 9. Neural net implementation of one-vs.-one classification, using a softmax layer. Each output value represents the probability that the input image is the specified fruit and not any of the other three fruits (all probabilities sum to 1.0). This model predicts that there is a 63% chance that the image is a pear.**
+
+### Softmax options
+
+Consider the following variants of softmax:
+
+- **Full softmax** is the softmax we've been discussing; that is, softmax calculates a probability for every possible class.
+    
+- **Candidate sampling** means that softmax calculates a probability for all the positive labels but only for a random sample of negative labels. For example, if we are interested in determining whether an input image is a beagle or a bloodhound, we don't have to provide probabilities for every non-doggy example.
+    
+
+Full softmax is fairly cheap when the number of classes is small but becomes prohibitively expensive when the number of classes climbs. Candidate sampling can improve efficiency in problems having a large number of classes.
+
+### One label versus many labels
+
+Softmax assumes that each example is a member of exactly one class. Some examples, however, can simultaneously be a member of multiple classes. For such examples:
+
+- You may not use softmax.
+- You must rely on multiple logistic regressions.
+
+For example, the one-vs.-one model in Figure 9 above assumes that each input image will depict exactly one type of fruit: an apple, an orange, a pear, or a grape. However, if an input image might contain multiple types of fruit—a bowl of both apples and oranges—you'll have to use multiple logistic regressions instead.
+
+1. ## Fill in the blank in the following sentence:  
+    Neural network models can automatically learn ___ during training.
+    
+     Activation functions
+    
+     Hyperparameters
+    
+     **Nonlinear feature interactions**
+    
+    Neural networks can automatically learn nonlinear relationships between features during training.
+    
+     The loss function
+    
+2. ## Evaluate this expression: `ReLU(–3)`
+    
+     –3
+    
+     **0**
+    
+    When the input to the ReLU function is a negative number, the output is 0.
+    
+     3
+    
+     9
+    
+3. ## Fill in the blank in the following sentence:  
+    A linear model is commonly trained using gradient descent. Neural networks additionally also use the ___ algorithm.
+    
+     Sigmoid
+    
+     Hidden layers
+    
+     Activation functions
+    
+     **Backpropagation**`
+    
+    Backpropagation is the most common algorithm used to train neural networks.
+    
+4. ## True or False: Lowering the learning rate can help prevent exploding gradients during neural network training.
+    
+     **True**
+    
+    Lowering the learning rate is indeed a strategy that can be effective in preventing exploding gradients. It can also help prevent dead ReLU units.
+    
+     False
+    
+5. ## You are training an image classifier model to predict a dog's breed(s) from a photo of the dog, using a list of pure-breed classes provided by the international [FCI breed registry](https://fci.be/en/nomenclature/). The model should successfully classify both pure-breed dogs and mixed-breed dogs. Which type of classification model should you use?
+    
+     Binary classification
+    
+     **One-vs.-all**
+    
+    One-vs.-all is a good choice here, as it will independently predict a probability for each possible class (dog breed). For cases where a dog is mixed-breed (e.g., half-labrador, half-poodle), this configuration will enable the model to predict high probabilities for both breeds (e.g., 75% likelihood of being a labrador, and 85% likelihood of being a poodle). By contrast, a one-vs.one (softmax) model would require the probabilities for each class to sum to 100%, which would mean that the higher the probability the model predicts for "labrador," the lower the probability the model predicts for "poodle" (and any other breed).
+    
+     One-vs.-one (multi-class with softmax)
+    
+     None of the above

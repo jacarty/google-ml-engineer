@@ -1,0 +1,722 @@
+# Lab 1: Feature Engineering with BigQuery ML
+
+**Date Completed:** February 15, 2026  
+**Duration:** ~3 hours  
+**Cost:** ~$2  
+**GCP Project:** carty-470812
+
+---
+
+## Overview
+
+This lab explores the impact of feature engineering on model performance using BigQuery ML. We build three models:
+1. **Baseline Model** - Raw features, no engineering
+2. **Engineered Model** - Manual feature engineering (age groups, hours ratio, interactions)
+3. **Boosted Tree Model** - Better algorithm, raw features
+
+**Key Learning:** Algorithm choice often matters more than feature engineering for tabular data.
+
+---
+
+## Objectives
+
+- ✅ Understand the importance of baseline models
+- ✅ Learn feature engineering techniques
+- ✅ Compare linear vs. tree-based models
+- ✅ Master the TRANSFORM pattern for production ML
+- ✅ Prevent train-serve skew
+
+---
+
+## Setup
+
+### Prerequisites
+- GCP Project with billing enabled
+- BigQuery API enabled
+- Dataset created: `ml_census_lab`
+
+### Create Dataset
+
+```sql
+-- Run in BigQuery Console
+-- Location: US (multiple regions)
+-- Dataset ID: ml_census_lab
+```
+
+---
+
+## Part 1: Data Exploration
+
+**Goal:** Understand the data before building anything.
+
+**Dataset:** `bigquery-public-data.ml_datasets.census_adult_income`  
+**Task:** Predict whether income > $50K based on demographics and work information.
+
+### Step 1: Explore the Schema
+
+
+```python
+%%bigquery
+-- See all available columns
+SELECT 
+  column_name,
+  data_type
+FROM 
+  `bigquery-public-data.ml_datasets`.INFORMATION_SCHEMA.COLUMNS
+WHERE 
+  table_name = 'census_adult_income'
+ORDER BY 
+  ordinal_position;
+```
+
+**Key Columns Identified:**
+- **Target:** `income_bracket` (<=50K or >50K)
+- **Numerical:** age, hours_per_week, capital_gain, capital_loss
+- **Categorical:** workclass, education, marital_status, occupation
+
+### Step 2: Summary Statistics
+
+
+```python
+%%bigquery
+-- Summary statistics for numerical features
+SELECT
+  -- Count records
+  COUNT(*) as total_records,
+  
+  -- Age statistics
+  MIN(age) as min_age,
+  MAX(age) as max_age,
+  AVG(age) as avg_age,
+  APPROX_QUANTILES(age, 100)[OFFSET(50)] as median_age,
+  
+  -- Hours per week statistics  
+  MIN(hours_per_week) as min_hours,
+  MAX(hours_per_week) as max_hours,
+  AVG(hours_per_week) as avg_hours,
+  APPROX_QUANTILES(hours_per_week, 100)[OFFSET(50)] as median_hours,
+  
+  -- Target distribution
+  COUNTIF(income_bracket = ' >50K') as high_income_count,
+  COUNTIF(income_bracket = ' <=50K') as low_income_count,
+  ROUND(COUNTIF(income_bracket = ' >50K') / COUNT(*) * 100, 2) as pct_high_income
+
+FROM 
+  `bigquery-public-data.ml_datasets.census_adult_income`;
+```
+
+**Results:**
+```
+total_records: 32,561
+min_age: 17, max_age: 90, avg_age: 38.6, median_age: 37
+min_hours: 1, max_hours: 99, avg_hours: 40.4, median_hours: 40
+pct_high_income: 24.08%
+```
+
+**Key Insights:**
+- **Class imbalance:** Only 24% earn >50K (76% earn <=50K)
+- **Naive baseline:** Always predicting "<=50K" = 76% accuracy
+- **Age distribution:** Right-skewed (average > median)
+- **Hours worked:** Centered around 40 (full-time)
+
+---
+
+## Part 2: Baseline Model
+
+**Goal:** Establish performance floor with zero feature engineering.
+
+### Step 3: Train Baseline Logistic Regression
+
+
+```python
+%%bigquery
+CREATE OR REPLACE MODEL `carty-470812.ml_census_lab.census_baseline_model`
+OPTIONS(
+  model_type='LOGISTIC_REG',
+  input_label_cols=['income_bracket'],
+  data_split_method='AUTO_SPLIT'  -- BigQuery creates 80/20 train/test split
+) AS
+SELECT
+  age,
+  workclass,
+  education,
+  marital_status,
+  occupation,
+  hours_per_week,
+  capital_gain,
+  capital_loss,
+  income_bracket
+FROM
+  `bigquery-public-data.ml_datasets.census_adult_income`;
+```
+
+**Training Time:** ~30-60 seconds  
+**Cost:** ~$0.25
+
+### Step 4: Evaluate Baseline Model
+
+
+```python
+%%bigquery
+SELECT
+  *
+FROM
+  ML.EVALUATE(MODEL `carty-470812.ml_census_lab.census_baseline_model`);
+```
+
+**Baseline Results:**
+
+| Metric | Value | Interpretation |
+|--------|-------|----------------|
+| **Accuracy** | 84.48% | Correct predictions overall |
+| **Precision** | 76.09% | When predicting >50K, correct 76% of time |
+| **Recall** | 52.97% | Catches only 53% of actual high earners |
+| **F1 Score** | 62.46% | Harmonic mean of precision/recall |
+| **ROC AUC** | 0.8961 | Excellent discriminative ability |
+
+**Analysis:**
+- ✅ Beat naive baseline (84.48% vs 76%)
+- ⚠️ Low recall (missing 47% of high earners)
+- ✅ High precision (few false positives)
+- 💡 Model is conservative - only predicts >50K when confident
+
+### Step 5: Analyze Feature Importance (Weights)
+
+
+```python
+%%bigquery
+-- Get model coefficients (feature weights)
+SELECT
+  processed_input,
+  weight
+FROM
+  ML.WEIGHTS(MODEL `carty-470812.ml_census_lab.census_baseline_model`)
+ORDER BY
+  ABS(weight) DESC
+LIMIT 20;
+```
+
+**Top Features by Absolute Weight:**
+
+| Feature | Weight | Insight |
+|---------|--------|----------|
+| hours_per_week | +0.0278 | More hours = higher income |
+| age | +0.0265 | Older = higher income (linear assumption) |
+| education=Doctorate | +1.18 | Strongest positive signal |
+| education=Prof-school | +1.07 | Law/Medical degrees |
+| marital_status=Married | +0.75 | Strong predictor |
+| occupation=Exec-managerial | +0.38 | White-collar advantage |
+
+**Observations:**
+- Education is the strongest categorical predictor
+- Marriage is a huge signal (dual income + stability)
+- Capital gains have tiny weights (due to scale - $50K × 0.00008 = 4.0 impact!)
+
+---
+
+## Part 3: Feature Engineering
+
+**Goal:** Improve performance through manual feature engineering.
+
+**Hypothesis:** 
+- Age has non-linear relationship with income (peaks mid-career)
+- Hours worked relative to full-time (40 hrs) is more meaningful than raw hours
+- Education × Occupation interactions capture combined effects
+
+### Step 6: Train Engineered Model
+
+
+```python
+%%bigquery
+CREATE OR REPLACE MODEL `carty-470812.ml_census_lab.census_engineered_model`
+OPTIONS(
+  model_type='LOGISTIC_REG',
+  input_label_cols=['income_bracket'],
+  data_split_method='AUTO_SPLIT'
+) AS
+SELECT
+  -- Original numerical features
+  capital_gain,
+  capital_loss,
+  
+  -- ENGINEERED: Age groups (capture non-linear pattern)
+  CASE 
+    WHEN age < 25 THEN 'young_adult'
+    WHEN age < 35 THEN 'early_career'
+    WHEN age < 50 THEN 'mid_career'
+    WHEN age < 60 THEN 'peak_career'
+    ELSE 'senior'
+  END AS age_group,
+  
+  -- ENGINEERED: Hours ratio (normalize to full-time)
+  hours_per_week / 40.0 AS hours_ratio,
+  
+  -- ENGINEERED: Education × Occupation interaction
+  CONCAT(education, '_', occupation) AS education_occupation,
+  
+  -- Original categorical features
+  workclass,
+  education,
+  marital_status,
+  occupation,
+  
+  -- Target
+  income_bracket
+FROM
+  `bigquery-public-data.ml_datasets.census_adult_income`;
+```
+
+### Step 7: Evaluate Engineered Model
+
+
+```python
+%%bigquery
+SELECT
+  *
+FROM
+  ML.EVALUATE(MODEL `carty-470812.ml_census_lab.census_engineered_model`);
+```
+
+**Engineered Model Results:**
+
+| Metric | Baseline | Engineered | Change |
+|--------|----------|------------|--------|
+| **Accuracy** | 84.48% | **84.66%** | +0.18% |
+| **Precision** | 76.09% | **76.27%** | +0.18% |
+| **Recall** | 52.97% | **53.56%** | +0.59% |
+| **F1 Score** | 62.46% | **62.93%** | +0.47% |
+| **ROC AUC** | 0.8961 | **0.9009** | +0.0048 |
+
+**Analysis:**
+- ✅ All metrics improved
+- ⚠️ Improvement is small (+0.18% accuracy)
+- 💡 Feature engineering helps, but not dramatically
+
+### Step 8: Analyze Engineered Features
+
+
+```python
+%%bigquery
+SELECT
+  *
+FROM
+  ML.WEIGHTS(MODEL `carty-470812.ml_census_lab.census_engineered_model`)
+ORDER BY
+  ABS(weight) DESC
+LIMIT 30;
+```
+
+**Key Findings:**
+
+**1. Hours Ratio - Big Winner! 🏆**
+- Weight: **0.821** (vs. 0.028 for raw hours_per_week)
+- 30x stronger signal!
+- Normalization to full-time (40 hrs) amplified the pattern
+
+**2. Age Groups - Clear Life Stage Pattern**
+
+| Age Group | Weight | Interpretation |
+|-----------|--------|----------------|
+| peak_career (50-60) | +0.307 | Highest earning years |
+| mid_career (35-50) | +0.105 | Solid earners |
+| senior (60+) | -0.155 | Mixed (retired/still working) |
+| early_career (<35) | -0.565 | Building careers |
+| young_adult (<25) | -1.073 | Entry-level |
+
+**3. Education × Occupation - Mostly Noise**
+- Created 250+ features
+- Many are sparse (few examples)
+- Some helpful: `Bachelors_Exec-managerial` (+0.39)
+- Some overfitted: `Doctorate_Other-service` (+2.64) - likely 2-3 examples
+
+**Lesson:** Simple transformations (hours ratio) > Complex interactions (education × occupation) for linear models
+
+---
+
+## Part 4: Algorithm Selection - Boosted Trees
+
+**Goal:** Compare feature engineering effort vs. using a better algorithm.
+
+**Hypothesis:** Tree-based models can automatically discover patterns without manual feature engineering.
+
+### Step 9: Train Boosted Tree Model
+
+
+```python
+%%bigquery
+CREATE OR REPLACE MODEL `carty-470812.ml_census_lab.census_boosted_tree_model`
+OPTIONS(
+  model_type='BOOSTED_TREE_CLASSIFIER',
+  input_label_cols=['income_bracket'],
+  data_split_method='AUTO_SPLIT',
+  max_iterations=50,
+  tree_method='hist',
+  early_stop=TRUE
+) AS
+SELECT
+  -- Just use RAW features - tree models do the engineering automatically!
+  age,
+  workclass,
+  education,
+  marital_status,
+  occupation,
+  hours_per_week,
+  capital_gain,
+  capital_loss,
+  income_bracket
+FROM
+  `bigquery-public-data.ml_datasets.census_adult_income`;
+```
+
+**Training Time:** ~10-15 minutes  
+**Cost:** ~$1.00  
+**Slot Time:** 2 hours 52 minutes
+
+**Why slower?**
+- Builds 50 sequential trees
+- Each tree learns from previous mistakes
+- More computationally intensive than logistic regression
+
+### Step 10: Evaluate Boosted Tree Model
+
+
+```python
+%%bigquery
+SELECT
+  *
+FROM
+  ML.EVALUATE(MODEL `carty-470812.ml_census_lab.census_boosted_tree_model`);
+```
+
+**Boosted Tree Results:**
+
+| Metric | Baseline | Engineered | **Boosted Tree** | vs. Baseline | vs. Engineered |
+|--------|----------|------------|------------------|--------------|----------------|
+| **Accuracy** | 84.48% | 84.66% | **86.23%** | +1.75% 🚀 | +1.57% 🚀 |
+| **Precision** | 76.09% | 76.27% | **80.94%** | +4.85% 🔥 | +4.67% 🔥 |
+| **Recall** | 52.97% | 53.56% | **56.96%** | +3.99% ✨ | +3.40% ✨ |
+| **F1 Score** | 62.46% | 62.93% | **66.86%** | +4.40% 💪 | +3.93% 💪 |
+| **ROC AUC** | 0.8961 | 0.9009 | **0.9093** | +0.0132 📈 | +0.0084 📈 |
+
+**Critical Insight:**
+
+**Effort vs. Impact:**
+
+| Approach | Time | Accuracy Gain |
+|----------|------|---------------|
+| Manual feature engineering | 30 min | +0.18% |
+| **Switch to boosted trees** | 2 min | **+1.75%** |
+
+**Boosted trees were 9.7x more effective than our feature engineering!**
+
+---
+
+## Part 5: Production Pattern - TRANSFORM
+
+**Goal:** Build production-ready model that prevents train-serve skew.
+
+**Problem:** Manual feature engineering in prediction code can introduce bugs.
+
+**Solution:** Use BigQuery ML's TRANSFORM clause to bundle feature engineering with the model.
+
+### Step 11: Train Model with TRANSFORM
+
+
+```python
+%%bigquery
+CREATE OR REPLACE MODEL `carty-470812.ml_census_lab.census_transform_model`
+TRANSFORM(
+  -- Feature engineering happens HERE, inside the model
+  
+  -- Keep original numerical features
+  capital_gain,
+  capital_loss,
+  
+  -- ENGINEERED: Age groups
+  CASE 
+    WHEN age < 25 THEN 'young_adult'
+    WHEN age < 35 THEN 'early_career'
+    WHEN age < 50 THEN 'mid_career'
+    WHEN age < 60 THEN 'peak_career'
+    ELSE 'senior'
+  END AS age_group,
+  
+  -- ENGINEERED: Hours ratio
+  hours_per_week / 40.0 AS hours_ratio,
+  
+  -- Keep original categorical features
+  workclass,
+  education,
+  marital_status,
+  occupation,
+  
+  -- Target variable (MUST be in TRANSFORM)
+  income_bracket
+)
+OPTIONS(
+  model_type='LOGISTIC_REG',
+  input_label_cols=['income_bracket'],
+  data_split_method='AUTO_SPLIT'
+) AS
+SELECT 
+  -- Now we just select RAW columns from the source
+  age,
+  workclass,
+  education,
+  marital_status,
+  occupation,
+  hours_per_week,
+  capital_gain,
+  capital_loss,
+  income_bracket
+FROM
+  `bigquery-public-data.ml_datasets.census_adult_income`;
+```
+
+**Performance:** Identical to engineered model (84.66% accuracy)
+
+**Key Difference:** Feature engineering is **stored with the model**
+
+### Step 12: Make Predictions (The Easy Way)
+
+
+```python
+%%bigquery
+-- Predicting with TRANSFORM model - just pass raw data!
+SELECT
+  age,
+  workclass,
+  education,
+  marital_status,
+  occupation,
+  hours_per_week,
+  predicted_income_bracket,
+  predicted_income_bracket_probs
+FROM
+  ML.PREDICT(MODEL `carty-470812.ml_census_lab.census_transform_model`,
+    (
+    SELECT
+      -- ✅ JUST RAW COLUMNS - No feature engineering needed!
+      age,
+      workclass,
+      education,
+      marital_status,
+      occupation,
+      hours_per_week,
+      capital_gain,
+      capital_loss
+    FROM
+      `bigquery-public-data.ml_datasets.census_adult_income`
+    LIMIT 10
+    )
+  );
+```
+
+**Benefits:**
+- ✅ No duplicated feature engineering code
+- ✅ Impossible to introduce train-serve skew
+- ✅ Model is self-contained and portable
+- ✅ Anyone can use it without knowing implementation details
+
+### Step 13: Compare to Non-TRANSFORM Prediction (The Hard Way)
+
+
+```python
+%%bigquery
+-- Predicting WITHOUT TRANSFORM - must manually duplicate ALL feature engineering
+SELECT
+  age,
+  predicted_income_bracket,
+  predicted_income_bracket_probs
+FROM
+  ML.PREDICT(MODEL `carty-470812.ml_census_lab.census_engineered_model`,
+    (
+    SELECT
+      -- 🚨 MANUAL FEATURE ENGINEERING (duplicated from training)
+      capital_gain,
+      capital_loss,
+      
+      CASE 
+        WHEN age < 25 THEN 'young_adult'
+        WHEN age < 35 THEN 'early_career'
+        WHEN age < 50 THEN 'mid_career'
+        WHEN age < 60 THEN 'peak_career'
+        ELSE 'senior'
+      END AS age_group,
+      
+      hours_per_week / 40.0 AS hours_ratio,
+      
+      workclass,
+      education,
+      marital_status,
+      occupation,
+      age
+    FROM
+      `bigquery-public-data.ml_datasets.census_adult_income`
+    LIMIT 10
+    )
+  );
+```
+
+**Problems with Non-TRANSFORM:**
+- ❌ Must copy/paste feature engineering code
+- ❌ Easy to introduce bugs (typos, different thresholds)
+- ❌ If training code changes, must update prediction code
+- ❌ Different team members might implement differently
+
+---
+
+## Results Summary
+
+### Model Performance Comparison
+
+| Model | Accuracy | Precision | Recall | ROC AUC | Training Time | Cost |
+|-------|----------|-----------|--------|---------|---------------|------|
+| Baseline (Logistic) | 84.48% | 76.09% | 52.97% | 0.8961 | 30-60s | $0.25 |
+| Engineered (Logistic) | 84.66% | 76.27% | 53.56% | 0.9009 | 30-60s | $0.25 |
+| **Boosted Tree** | **86.23%** | **80.94%** | **56.96%** | **0.9093** | 10-15m | $1.00 |
+| TRANSFORM (Logistic) | 84.66% | 76.27% | 53.56% | 0.9009 | 30-60s | $0.25 |
+
+### Key Learnings
+
+**1. Algorithm Choice > Feature Engineering**
+- Manual feature engineering: +0.18% improvement
+- Switching to boosted trees: +1.75% improvement
+- **9.7x more effective to change algorithms**
+
+**2. Feature Engineering Still Valuable**
+- `hours_ratio` (normalization) gave 30x weight increase
+- `age_group` captured non-linear income patterns
+- Simple transformations > Complex interactions for linear models
+
+**3. TRANSFORM Pattern is Essential for Production**
+- Prevents train-serve skew
+- Makes models self-contained
+- Reduces maintenance burden
+- Enables team collaboration
+
+**4. Class Imbalance Matters**
+- Naive baseline: 76% (always predict <=50K)
+- Best model: 86.23% (+10.2 percentage points)
+- Recall still low (57%) - missing features we don't have
+
+**5. Cost-Performance Tradeoffs**
+- Logistic regression: Fast, cheap, interpretable
+- Boosted trees: Better accuracy, 4x more expensive, less interpretable
+
+---
+
+## Production Deployment Pattern
+
+### Recommended Approach
+
+```sql
+-- Daily prediction pipeline
+CREATE OR REPLACE TABLE `carty-470812.ml_census_lab.daily_predictions` AS
+SELECT
+  customer_id,
+  age,
+  education,
+  occupation,
+  predicted_income_bracket,
+  predicted_income_bracket_probs[OFFSET(1)].prob AS probability_high_income
+FROM
+  ML.PREDICT(MODEL `carty-470812.ml_census_lab.census_transform_model`,
+    (
+    SELECT
+      customer_id,
+      age,
+      workclass,
+      education,
+      marital_status,
+      occupation,
+      hours_per_week,
+      capital_gain,
+      capital_loss
+    FROM
+      `carty-470812.customer_data.new_customers`
+    WHERE
+      date = CURRENT_DATE()
+    )
+  )
+WHERE
+  predicted_income_bracket_probs[OFFSET(1)].prob > 0.7;  -- High-confidence only
+```
+
+**Schedule:** Run nightly via scheduled queries  
+**Usage:** Marketing team queries for targeting  
+**Maintenance:** Zero feature engineering code needed!
+
+---
+
+## When to Use What
+
+### Logistic Regression
+**Use when:**
+- ✅ Need interpretability (explain decisions)
+- ✅ Real-time predictions (millisecond latency)
+- ✅ Limited data (<1,000 rows)
+- ✅ Linear relationships
+- ✅ Simple deployment (mobile, embedded)
+
+**Example:** Credit card fraud detection (must explain declines)
+
+### Boosted Trees
+**Use when:**
+- ✅ Accuracy > interpretability
+- ✅ Tabular data (mixed types)
+- ✅ Complex interactions
+- ✅ Sufficient data (>10,000 rows)
+- ✅ Can tolerate slower predictions
+
+**Example:** Income prediction, customer churn, loan defaults
+
+### TRANSFORM Pattern
+**Use when:**
+- ✅ Deploying to production
+- ✅ Feature engineering required
+- ✅ Multiple people using model
+- ✅ Long-term maintenance
+
+**Skip when:**
+- Experimentation only
+- No feature engineering
+- Throwaway analysis
+
+---
+
+## Next Steps
+
+### Lab 2: End-to-End Pipeline in Vertex AI
+- Export data to Cloud Storage
+- Train AutoML model
+- Build custom training container
+- Deploy to endpoint
+- Compare costs and performance
+
+### Lab 3: Hyperparameter Tuning
+- Manual tuning baseline
+- Vertex AI hyperparameter tuning
+- Bayesian optimization
+- Visualization and analysis
+
+### Lab 4: Model Monitoring
+- Enable drift detection
+- Simulate data drift
+- Build response runbook
+- Automate retraining
+
+---
+
+## Resources
+
+- [BigQuery ML Documentation](https://cloud.google.com/bigquery-ml/docs)
+- [ML.TRANSFORM](https://cloud.google.com/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-create#transform_clause)
+- [Census Dataset](https://cloud.google.com/bigquery/public-data/census-income)
+- [GCP ML Certification Guide](https://cloud.google.com/learn/certification/machine-learning-engineer)
+
+---
+
+**Lab Completed:** February 15, 2026 ✅  
+**Total Cost:** ~$2  
+**Next Lab:** Vertex AI Pipeline (Week 2-3)

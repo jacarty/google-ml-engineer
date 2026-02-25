@@ -1,0 +1,579 @@
+# Working with numerical data
+
+ML practitioners spend far more time evaluating, cleaning, and transforming data than building models. Data is so important that this course devotes three entire units to the topic:
+
+- Working with numerical data (this unit)
+- [Working with categorical data](https://developers.google.com/machine-learning/crash-course/categorical-data)
+- [Datasets, generalization, and overfitting](https://developers.google.com/machine-learning/crash-course/overfitting)
+
+This unit focuses on [**numerical data**](https://developers.google.com/machine-learning/glossary#numerical-data), meaning integers or floating-point values that behave like numbers. That is, they are additive, countable, ordered, and so on. The next unit focuses on [**categorical data**](https://developers.google.com/machine-learning/glossary#categorical-data), which can include numbers that behave like categories. The third unit focuses on how to prepare your data to ensure high-quality results when training and evaluating your model.
+
+Examples of numerical data include:
+
+- Temperature
+- Weight
+- The number of deer wintering in a nature preserve
+
+In contrast, US postal codes, despite being five-digit or nine-digit numbers, don't behave like numbers or represent mathematical relationships. Postal code 40004 (in Nelson County, Kentucky) is not twice the quantity of postal code 20002 (in Washington, D.C.). These numbers represent categories, specifically geographic areas, and are considered categorical data.
+
+# Numerical data: How a model ingests data using feature vectors
+
+Until now, we've given you the impression that a model acts directly on the rows of a dataset; however, models actually ingest data somewhat differently.
+
+For example, suppose a dataset provides five columns, but only two of those columns (`b` and `d`) are features in the model. When processing the example in row 3, does the model simply grab the contents of the highlighted two cells (3b and 3d) as follows?
+
+![[Pasted image 20251127072834.png]]
+**Figure 1.** Not exactly how a model gets its examples.
+
+In fact, the model actually ingests an array of floating-point values called a [**feature vector**](https://developers.google.com/machine-learning/glossary#feature-vector). You can think of a feature vector as the floating-point values comprising one example.
+
+![[Pasted image 20251127073000.png]]
+**Figure 2.** Closer to the truth, but not realistic.
+
+However, feature vectors seldom use the dataset's _raw values_. Instead, you must typically process the dataset's values into representations that your model can better learn from. So, a more realistic feature vector might look something like this:
+
+![[Pasted image 20251127073016.png]]
+**Figure 3.** A more realistic feature vector.
+
+Wouldn't a model produce better predictions by training from the _actual_ values in the dataset than from _altered_ values? Surprisingly, the answer is no.
+
+You must determine the best way to represent raw dataset values as trainable values in the feature vector. This process is called [**feature engineering**](https://developers.google.com/machine-learning/glossary#feature-engineering), and it is a vital part of machine learning. The most common feature engineering techniques are:
+
+- [**Normalization**](https://developers.google.com/machine-learning/glossary#normalization): Converting numerical values into a standard range.
+- [**Binning**](https://developers.google.com/machine-learning/glossary#binning) (also referred to as [**bucketing**](https://developers.google.com/machine-learning/glossary#bucketing)): Converting numerical values into buckets of ranges.
+
+This unit covers normalizing and binning. The next unit, [Working with categorical data](https://developers.google.com/machine-learning/crash-course/categorical-data), covers other forms of [**preprocessing**](https://developers.google.com/machine-learning/glossary#preprocessing), such as converting non-numerical data, like strings, to floating point values.
+
+Every value in a feature vector must be a floating-point value. However, many features are naturally strings or other non-numerical values. Consequently, a large part of feature engineering is representing non-numerical values as numerical values. You'll see a lot of this in later modules.
+
+# Numerical data: First steps
+
+Before creating feature vectors, we recommend studying numerical data in two ways:
+
+- Visualize your data in plots or graphs.
+- Get statistics about your data.
+
+## Visualize your data
+
+Graphs can help you find anomalies or patterns hiding in the data. Therefore, before getting too far into analysis, look at your data graphically, either as scatter plots or histograms. View graphs not only at the beginning of the data pipeline, but also throughout data transformations. Visualizations help you continually check your assumptions.
+
+We recommend working with pandas for visualization:
+
+- [Working with Missing Data (pandas Documentation)](http://pandas.pydata.org/pandas-docs/stable/missing_data.html)
+- [Visualizations (pandas Documentation)](http://pandas.pydata.org/pandas-docs/stable/visualization.html)
+
+Note that certain visualization tools are optimized for certain data formats. A visualization tool that helps you evaluate protocol buffers may or may not be able to help you evaluate CSV data.
+
+## Statistically evaluate your data
+
+Beyond visual analysis, we also recommend evaluating potential features and labels mathematically, gathering basic statistics such as:
+
+- mean and median
+- standard deviation
+- the values at the quartile divisions: the 0th, 25th, 50th, 75th, and 100th percentiles. The 0th percentile is the minimum value of this column; the 100th percentile is the maximum value of this column. (The 50th percentile is the median.)
+
+## Find outliers
+
+An [**outlier**](https://developers.google.com/machine-learning/glossary#outliers) is a value _distant_ from most other values in a feature or label. Outliers often cause problems in model training, so finding outliers is important.
+
+When the delta between the 0th and 25th percentiles differs significantly from the delta between the 75th and 100th percentiles, the dataset probably contains outliers.
+
+**Note:** Don't over-rely on basic statistics. Anomalies can also hide in seemingly well-balanced data.
+
+Outliers can fall into any of the following categories:
+
+- The outlier is due to a _mistake_. For example, perhaps an experimenter mistakenly entered an extra zero, or perhaps an instrument that gathered data malfunctioned. You'll generally delete examples containing mistake outliers.
+- The outlier is a legitimate data point, _not a mistake_. In this case, will your trained model ultimately need to infer good predictions on these outliers?
+    - If yes, keep these outliers in your training set. After all, outliers in certain features sometimes mirror outliers in the label, so the outliers could actually _help_ your model make better predictions. Be careful, extreme outliers can still hurt your model.
+    - If no, delete the outliers or apply more invasive feature engineering techniques, such as [**clipping**](https://developers.google.com/machine-learning/glossary#clipping).
+
+
+# Numerical data: Normalization
+
+After examining your data through statistical and visualization techniques, you should transform your data in ways that will help your model train more effectively. The goal of [**normalization**](https://developers.google.com/machine-learning/glossary#normalization) is to transform features to be on a similar scale. For example, consider the following two features:
+
+- Feature `X` spans the range 154 to 24,917,482.
+- Feature `Y` spans the range 5 to 22.
+
+These two features span very different ranges. Normalization might manipulate `X` and `Y` so that they span a similar range, perhaps 0 to 1.
+
+Normalization provides the following benefits:
+
+- Helps models _converge more quickly_ during training. When different features have different ranges, gradient descent can "bounce" and slow convergence. That said, more advanced optimizers like [Adagrad](https://developers.google.com/machine-learning/glossary#adagrad) and [Adam](https://arxiv.org/abs/1412.6980) protect against this problem by changing the effective learning rate over time.
+- Helps models _infer better predictions_. When different features have different ranges, the resulting model might make somewhat less useful predictions.
+- Helps _avoid the "NaN trap"_ when feature values are very high. [NaN](https://wikipedia.org/wiki/NaN) is an abbreviation for _not a number_. When a value in a model exceeds the floating-point precision limit, the system sets the value to `NaN` instead of a number. When one number in the model becomes a NaN, other numbers in the model also eventually become a NaN.
+- Helps the model _learn appropriate weights_ for each feature. Without feature scaling, the model pays too much attention to features with wide ranges and not enough attention to features with narrow ranges.
+
+We recommend normalizing numeric features covering distinctly different ranges (for example, age and income). We also recommend normalizing a single numeric feature that covers a wide range, such as `city population.`
+
+Warning: If you normalize a feature during training, you must also normalize that feature when making predictions.
+
+Consider the following two features:
+
+- Feature `A`'s lowest value is -0.5 and highest is +0.5.
+- Feature `B`'s lowest value is -5.0 and highest is +5.0.
+
+Feature `A` and Feature `B` have relatively narrow spans. However, Feature `B`'s span is 10 times wider than Feature `A`'s span. Therefore:
+
+- At the start of training, the model assumes that Feature `B` is ten times more "important" than Feature `A`.
+- Training will take longer than it should.
+- The resulting model may be suboptimal.
+
+The overall damage due to not normalizing will be relatively small; however, we still recommend normalizing Feature A and Feature B to the same scale, perhaps -1.0 to +1.0.
+
+Now consider two features with a greater disparity of ranges:
+
+- Feature `C`'s lowest value is -1 and highest is +1.
+- Feature `D`'s lowest value is +5000 and highest is +1,000,000,000.
+
+If you don't normalize Feature `C` and Feature `D`, your model will likely be suboptimal. Furthermore, training will take much longer to converge or even fail to converge entirely!
+
+This section covers three popular normalization methods:
+
+- linear scaling
+- Z-score scaling
+- log scaling
+
+This section additionally covers [**clipping**](https://developers.google.com/machine-learning/glossary#clipping). Although not a true normalization technique, clipping does tame unruly numerical features into ranges that produce better models.
+
+## Linear scaling
+
+**[Linear scaling](https://developers.google.com/machine-learning/glossary#scaling)** (more commonly shortened to just **scaling**) means converting floating-point values from their natural range into a standard range—usually 0 to 1 or -1 to +1.
+
+#### Click the icon to see the math.
+
+Linear scaling is a good choice when all of the following conditions are met:
+
+- The lower and upper bounds of your data don't change much over time.
+- The feature contains few or no outliers, and those outliers aren't extreme.
+- The feature is approximately uniformly distributed across its range. That is, a histogram would show roughly even bars for most values.
+
+Suppose human `age` is a feature. Linear scaling is a good normalization technique for `age` because:
+
+- The approximate lower and upper bounds are 0 to 100.
+- `age` contains a relatively small percentage of outliers. Only about 0.3% of the population is over 100.
+- Although certain ages are somewhat better represented than others, a large dataset should contain sufficient examples of all ages.
+
+**Note:** Most real-world features do not meet all of the criteria for linear scaling. Z-score scaling is typically a better normalization choice than linear scaling.
+
+### Exercise: Check your understanding
+
+Suppose your model has a feature named `net_worth` that holds the net worth of different people. Would linear scaling be a good normalization technique for `net_worth`? Why or why not?
+
+#### Click the icon to see the answer.
+
+**Answer:** Linear scaling would be a poor choice for normalizing `net_worth`. This feature contains many outliers, and the values are not uniformly distributed across its primary range. Most people would be squeezed within a very narrow band of the overall range.
+
+---
+
+## Z-score scaling
+
+A **Z-score** is the number of standard deviations a value is from the mean. For example, a value that is 2 standard deviations _greater_ than the mean has a Z-score of +2.0. A value that is 1.5 standard deviations _less_ than the mean has a Z-score of -1.5.
+
+Representing a feature with **Z-score scaling** means storing that feature's Z-score in the feature vector. For example, the following figure shows two histograms:
+
+- On the left, a classic normal distribution.
+- On the right, the same distribution normalized by Z-score scaling.
+
+![[Pasted image 20251127081425.png]]
+**Figure 4.** Raw data (left) versus Z-score (right) for a normal distribution.
+
+Z-score scaling is also a good choice for data like that shown in the following figure, which has only a vaguely normal distribution.
+
+![[Pasted image 20251127081440.png]]
+**Figure 5.** Raw data (left) versus Z-score scaling (right) for a non-classic normal distribution.
+
+#### Click the icon to see the math.
+![[Pasted image 20251127081452.png]]
+#### Click the icon to learn more about normal distributions.
+![[Pasted image 20251127081504.png]]
+
+Z-score is a good choice when the data follows a normal distribution or a distribution somewhat like a normal distribution.
+
+Note that some distributions might be normal within the bulk of their range, but still contain extreme outliers. For example, nearly all of the points in a `net_worth` feature might fit neatly into 3 standard deviations, but a few examples of this feature could be hundreds of standard deviations away from the mean. In these situations, you can combine Z-score scaling with another form of normalization (usually clipping) to handle this situation.
+
+### Exercise: Check your understanding
+
+Suppose your model trains on a feature named `height` that holds the adult heights of ten million women. Would Z-score scaling be a good normalization technique for `height`? Why or why not?
+
+#### Click the icon to see the answer.
+
+**Answer:** Z-score scaling would be a good normalization technique for `height` because this feature conforms to a normal distribution. Ten million examples implies a lot of outliers—probably enough outliers for the model to learn patterns on very high or very low Z-scores.
+## Log scaling
+
+Log scaling computes the logarithm of the raw value. In theory, the logarithm could be any base; in practice, log scaling usually calculates the natural logarithm (ln).
+
+#### Click the icon to see the math.
+![[Pasted image 20251127081525.png]]
+Log scaling is helpful when the data conforms to a _power law_ distribution. Casually speaking, a power law distribution looks as follows:
+
+- Low values of `X` have very high values of `Y`.
+- As the values of `X` increase, the values of `Y` quickly decrease. Consequently, high values of `X` have very low values of `Y`.
+
+Movie ratings are a good example of a power law distribution. In the following figure, notice:
+
+- A few movies have lots of user ratings. (Low values of `X` have high values of `Y`.)
+- Most movies have very few user ratings. (High values of `X` have low values of `Y`.)
+
+Log scaling changes the distribution, which helps train a model that will make better predictions.
+
+![[Pasted image 20251127081551.png]]
+**Figure 6.** Comparing a raw distribution to its log.
+
+As a second example, book sales conform to a power law distribution because:
+
+- Most published books sell a tiny number of copies, maybe one or two hundred.
+- Some books sell a moderate number of copies, in the thousands.
+- Only a few _bestsellers_ will sell more than a million copies.
+
+Suppose you are training a linear model to find the relationship of, say, book covers to book sales. A linear model training on raw values would have to find something about book covers on books that sell a million copies that is 10,000 more powerful than book covers that sell only 100 copies. However, log scaling all the sales figures makes the task far more feasible. For example, the log of 100 is:
+
+  ~4.6 = ln(100)
+
+while the log of 1,000,000 is:
+
+  ~13.8 = ln(1,000,000)
+
+So, the log of 1,000,000 is only about three times larger than the log of 100. You probably _could_ imagine a bestseller book cover being about three times more powerful (in some way) than a tiny-selling book cover.
+
+## Clipping
+
+[**Clipping**](https://developers.google.com/machine-learning/glossary#clipping) is a technique to minimize the influence of extreme outliers. In brief, clipping usually caps (reduces) the value of outliers to a specific maximum value. Clipping is a strange idea, and yet, it can be very effective.
+
+For example, imagine a dataset containing a feature named `roomsPerPerson`, which represents the number of rooms (total rooms divided by number of occupants) for various houses. The following plot shows that over 99% of the feature values conform to a normal distribution (roughly, a mean of 1.8 and a standard deviation of 0.7). However, the feature contains a few outliers, some of them extreme:
+
+![[Pasted image 20251127081615.png]]
+**Figure 7.** Mainly normal, but not completely normal.
+
+How can you minimize the influence of those extreme outliers? Well, the histogram is not an even distribution, a normal distribution, or a power law distribution. What if you simply _cap_ or _clip_ the maximum value of `roomsPerPerson` at an arbitrary value, say 4.0?
+
+![[Pasted image 20251127081628.png]]
+**Figure 8.** Clipping feature values at 4.0.
+
+Clipping the feature value at 4.0 doesn't mean that your model ignores all values greater than 4.0. Rather, it means that all values that were greater than 4.0 now become 4.0. This explains the peculiar hill at 4.0. Despite that hill, the scaled feature set is now more useful than the original data.
+
+Wait a second! Can you really reduce every outlier value to some arbitrary upper threshold? When training a model, yes.
+
+You can also clip values after applying other forms of normalization. For example, suppose you use Z-score scaling, but a few outliers have absolute values far greater than 3. In this case, you could:
+
+- Clip Z-scores greater than 3 to become exactly 3.
+- Clip Z-scores less than -3 to become exactly -3.
+
+Clipping prevents your model from overindexing on unimportant data. However, some outliers are actually important, so clip values carefully.
+
+## Summary of normalization techniques
+
+The best normalization technique is one that works well in practice, so try new ideas if you think they'll work well on your feature distribution.
+
+![[Pasted image 20251127083855.png]]
+## Exercise: Test your knowledge
+
+Which technique would be most suitable for normalizing a feature with the following distribution?
+
+![[Pasted image 20251127083908.png]]
+
+Z-score scaling
+
+
+
+Suppose you are developing a model that predicts a data center's productivity based on the temperature measured inside the data center. Almost all of the `temperature` values in your dataset fall between 15 and 30 (Celsius), with the following exceptions:
+
+- Once or twice per year, on extremely hot days, a few values between 31 and 45 are recorded in `temperature`.
+- Every 1,000th point in `temperature` is set to 1,000 rather than the actual temperature.
+
+Which would be a reasonable normalization technique for `temperature`?
+
+Clip the outlier values between 31 and 45, but delete the outliers with a value of 1,000
+
+The values of 1,000 are mistakes, and should be deleted rather than clipped.
+
+The values between 31 and 45 are legitimate data points. Clipping would probably be a good idea for these values, assuming the dataset doesn't contain enough examples in this temperature range to train the model to make good predictions. However, during inference, note that the clipped model would therefore make the same prediction for a temperature of 45 as for a temperature of 35.
+
+# Numerical data: Binning
+
+**Binning** (also called **bucketing**) is a [**feature engineering**](https://developers.google.com/machine-learning/glossary#feature_engineering) technique that groups different numerical subranges into _bins_ or [**_buckets_**](https://developers.google.com/machine-learning/glossary#bucketing). In many cases, binning turns numerical data into categorical data. For example, consider a [**feature**](https://developers.google.com/machine-learning/glossary#feature) named `X` whose lowest value is 15 and highest value is 425. Using binning, you could represent `X` with the following five bins:
+
+- Bin 1: 15 to 34
+- Bin 2: 35 to 117
+- Bin 3: 118 to 279
+- Bin 4: 280 to 392
+- Bin 5: 393 to 425
+
+Bin 1 spans the range 15 to 34, so every value of `X` between 15 and 34 ends up in Bin 1. A model trained on these bins will react no differently to `X` values of 17 and 29 since both values are in Bin 1.
+
+The [**feature vector**](https://developers.google.com/machine-learning/glossary#feature_vector) represents the five bins as follows:
+
+|Bin number|Range|Feature vector|
+|---|---|---|
+|1|15-34|[1.0, 0.0, 0.0, 0.0, 0.0]|
+|2|35-117|[0.0, 1.0, 0.0, 0.0, 0.0]|
+|3|118-279|[0.0, 0.0, 1.0, 0.0, 0.0]|
+|4|280-392|[0.0, 0.0, 0.0, 1.0, 0.0]|
+|5|393-425|[0.0, 0.0, 0.0, 0.0, 1.0]|
+
+Even though `X` is a single column in the dataset, binning causes a model to treat `X` as _five_ separate features. Therefore, the model learns separate weights for each bin.
+
+Binning is a good alternative to [**scaling**](https://developers.google.com/machine-learning/glossary#scaling) or [**clipping**](https://developers.google.com/machine-learning/glossary#clipping) when either of the following conditions is met:
+
+- The overall _linear_ relationship between the feature and the [**label**](https://developers.google.com/machine-learning/glossary#label) is weak or nonexistent.
+- When the feature values are clustered.
+
+Binning can feel counterintuitive, given that the model in the previous example treats the values 37 and 115 identically. But when a feature appears more _clumpy_ than linear, binning is a much better way to represent the data.
+
+## Binning example: number of shoppers versus temperature
+
+Suppose you are creating a model that predicts the number of shoppers by the outside temperature for that day. Here's a plot of the temperature versus the number of shoppers:
+
+![[Pasted image 20251127171955.png]]
+**Figure 9.** A scatter plot of 45 points.
+
+The plot shows, not surprisingly, that the number of shoppers was highest when the temperature was most comfortable.
+
+You could represent the feature as raw values: a temperature of 35.0 in the dataset would be 35.0 in the feature vector. Is that the best idea?
+
+During training, a linear regression model learns a single weight for each feature. Therefore, if temperature is represented as a single feature, then a temperature of 35.0 would have five times the influence (or one-fifth the influence) in a prediction as a temperature of 7.0. However, the plot doesn't really show any sort of linear relationship between the label and the feature value.
+
+The graph suggests three clusters in the following subranges:
+
+- Bin 1 is the temperature range 4-11.
+- Bin 2 is the temperature range 12-26.
+- Bin 3 is the temperature range 27-36.
+
+![[Pasted image 20251127172009.png]]
+**Figure 10.** The scatter plot divided into three bins.
+
+The model learns separate weights for each bin.
+
+While it's possible to create more than three bins, even a separate bin for each temperature reading, this is often a bad idea for the following reasons:
+
+- A model can only learn the association between a bin and a label if there are enough examples in that bin. In the given example, each of the 3 bins contains at least 10 examples, which _might_ be sufficient for training. With 33 separate bins, none of the bins would contain enough examples for the model to train on.
+- A separate bin for each temperature results in 33 separate temperature features. However, you typically should _minimize_ the number of features in a model.
+
+### Exercise: Check your understanding
+
+The following plot shows the median home price for each 0.2 degrees of latitude for the mythical country of Freedonia:
+
+![[Pasted image 20251127172033.png]]
+**Figure 11.** Median home value per 0.2 degrees latitude.
+
+The graphic shows a nonlinear pattern between home value and latitude, so representing latitude as its floating-point value is unlikely to help a model make good predictions. Perhaps bucketing latitudes would be a better idea?
+
+What would be the best bucketing strategy?
+
+Don't bucket.
+
+## Quantile Bucketing
+
+**Quantile bucketing** creates bucketing boundaries such that the number of examples in each bucket is exactly or nearly equal. Quantile bucketing mostly hides the outliers.
+
+To illustrate the problem that quantile bucketing solves, consider the equally spaced buckets shown in the following figure, where each of the ten buckets represents a span of exactly 10,000 dollars. Notice that the bucket from 0 to 10,000 contains dozens of examples but the bucket from 50,000 to 60,000 contains only 5 examples. Consequently, the model has enough examples to train on the 0 to 10,000 bucket but not enough examples to train on for the 50,000 to 60,000 bucket.
+
+![[Pasted image 20251127172102.png]]
+**Figure 13.** Some buckets contain a lot of cars; other buckets contain very few cars.
+
+In contrast, the following figure uses quantile bucketing to divide car prices into bins with approximately the same number of examples in each bucket. Notice that some of the bins encompass a narrow price span while others encompass a very wide price span.
+
+
+![[Pasted image 20251127172125.png]]
+**Figure 14.** Quantile bucketing gives each bucket about the same number of cars.
+
+Bucketing with equal intervals works for many data distributions. For skewed data, however, try quantile bucketing. Equal intervals give extra information space to the long tail while compacting the large torso into a single bucket. Quantile buckets give extra information space to the large torso while compacting the long tail into a single bucket.
+
+# Numerical data: Scrubbing
+
+Apple trees produce a mixture of great fruit and wormy messes. Yet the apples in high-end grocery stores display 100% perfect fruit. Between orchard and grocery, someone spends significant time removing the bad apples or spraying a little wax on the salvageable ones. As an ML engineer, you'll spend enormous amounts of your time tossing out bad examples and cleaning up the salvageable ones. Even a few bad apples can spoil a large dataset.
+
+Many examples in datasets are unreliable due to one or more of the following problems:
+
+|Problem category|Example|
+|---|---|
+|Omitted values|A census taker fails to record a resident's age.|
+|Duplicate examples|A server uploads the same logs twice.|
+|Out-of-range feature values.|A human accidentally types an extra digit.|
+|Bad labels|A human evaluator mislabels a picture of an oak tree as a maple.|
+
+You can write a program or script to detect any of the following problems:
+
+- Omitted values
+- Duplicate examples
+- Out-of-range feature values
+
+For example, the following dataset contains six repeated values:
+
+![[Pasted image 20251127173104.png]]
+**Figure 15.** The first six values are repeated.
+
+As another example, suppose the temperature range for a certain feature must be between 10 and 30 degrees, inclusive. But accidents happen—perhaps a thermometer is temporarily exposed to the sun which causes a bad outlier. Your program or script must identify temperature values less than 10 or greater than 30:
+
+![[Pasted image 20251127173121.png]]
+**Figure 16.** An out-of-range value.
+
+When labels are generated by multiple people, we recommend statistically determining whether each rater generated equivalent sets of labels. Perhaps one rater was a harsher grader than the other raters or used a different set of grading criteria?
+
+Once detected, you typically "fix" examples that contain bad features or bad labels by removing them from the dataset or imputing their values. For details, see the [Data characteristics](https://developers.google.com/machine-learning/crash-course/overfitting/data-characteristics) section of the [Datasets, generalization, and overfitting](https://developers.google.com/machine-learning/crash-course/overfitting) module.
+
+# Numerical data: Qualities of good numerical features
+
+This unit has explored ways to map raw data into suitable [**feature vectors**](https://developers.google.com/machine-learning/glossary#feature_vector). Good numerical [**features**](https://developers.google.com/machine-learning/glossary#feature) share the qualities described in this section.
+
+## Clearly named
+
+Each feature should have a clear, sensible, and obvious meaning to any human on the project. For example, the meaning of the following feature value is confusing:
+
+Not recommended
+
+> house_age: 851472000
+
+In contrast, the following feature name and value are far clearer:
+
+Recommended
+
+> house_age_years: 27
+
+**Note:** Although your co-workers will rebel against confusing feature and label names, the model won't care (assuming you normalize values properly).
+
+## Checked or tested before training
+
+Although this module has devoted a lot of time to [**outliers**](https://developers.google.com/machine-learning/glossary#outliers), the topic is important enough to warrant one final mention. In some cases, bad data (rather than bad engineering choices) causes unclear values. For example, the following `user_age_in_years` came from a source that didn't check for appropriate values:
+
+Not recommended
+
+> user_age_in_years: 224
+
+But people _can_ be 24 years old:
+
+Recommended
+
+> user_age_in_years: 24
+
+Check your data!
+
+## Sensible
+
+A "magic value" is a purposeful discontinuity in an otherwise continuous feature. For example, suppose a continuous feature named `watch_time_in_seconds` can hold any floating-point value between 0 and 30 but represents the _absence_ of a measurement with the magic value -1:
+
+Not recommended
+
+> watch_time_in_seconds: -1
+
+A `watch_time_in_seconds` of -1 would force the model to try to figure out what it means to watch a movie backwards in time. The resulting model would probably not make good predictions.
+
+A better technique is to create a separate Boolean feature that indicates whether or not a `watch_time_in_seconds` value is supplied. For example:
+
+Recommended
+
+> watch_time_in_seconds: 4.82  
+> is_watch_time_in_seconds_defined=True
+> 
+> watch_time_in_seconds: 0  
+> is_watch_time_in_seconds_defined=False
+
+This is a way to handle a continuous dataset with missing values. Now consider a [**discrete**](https://developers.google.com/machine-learning/glossary#discrete_feature) numerical feature, like `product_category`, whose values must belong to a finite set of values. In this case, when a value is missing, signify that missing value using a new value in the finite set. With a discrete feature, the model will learn different weights for each value, including original weights for missing features.
+
+For example, we can imagine possible values fitting in the set:
+
+> {0: 'electronics', 1: 'books', 2: 'clothing', 3: 'missing_category'}.
+
+# Numerical data: Polynomial transforms
+
+Sometimes, when the ML practitioner has domain knowledge suggesting that one variable is related to the square, cube, or other power of another variable, it's useful to create a [**synthetic feature**](https://developers.google.com/machine-learning/glossary#synthetic_feature) from one of the existing numerical [**features**](https://developers.google.com/machine-learning/glossary#feature).
+
+Consider the following spread of data points, where pink circles represent one class or category (for example, a species of tree) and green triangles another class (or species of tree):
+
+![[Pasted image 20251128122247.png]]
+**Figure 17.** Two classes that can't be separated by a line.
+
+It's not possible to draw a straight line that cleanly separates the two classes, but it _is_ possible to draw a curve that does so:
+
+![[Pasted image 20251128122259.png]]
+**Figure 18.** Separating the classes with _y = x2_.
+
+As discussed in the [Linear regression module](https://developers.google.com/machine-learning/crash-course/linear-regression), a linear model with one feature,
+x1 , is described by the linear equation:
+![[Pasted image 20251128122313.png]]
+Additional features are handled by the addition of terms![[Pasted image 20251128122336.png]] etc.
+
+[**Gradient descent**](https://developers.google.com/machine-learning/glossary#gradient_descent) finds the [**weight**](https://developers.google.com/machine-learning/glossary#weight)![[Pasted image 20251128122351.png]]
+ , in the case of additional features) that minimizes the loss of the model. But the data points shown cannot be separated by a line. What can be done?
+
+It's possible to keep both the linear equation _and_ allow nonlinearity by defining a new term, x2, that is simply x1 squared:
+![[Pasted image 20251128122418.png]]
+This synthetic feature, called a polynomial transform, is treated like any other feature. The previous linear formula becomes:
+![[Pasted image 20251128122428.png]]
+This can still be treated like a [**linear regression**](https://developers.google.com/machine-learning/glossary#linear_regression) problem, and the weights determined through gradient descent, as usual, despite containing a hidden squared term, the polynomial transform. Without changing how the linear model trains, the addition of a polynomial transform allows the model to separate the data points using a curve of the form ![[Pasted image 20251128122437.png]]
+
+Usually the numerical feature of interest is multiplied by itself, that is, raised to some power. Sometimes an ML practitioner can make an informed guess about the appropriate exponent. For example, many relationships in the physical world are related to squared terms, including acceleration due to gravity, the attenuation of light or sound over distance, and elastic potential energy.
+
+If you transform a feature in a way that changes its scale, you should consider experimenting with normalizing it as well. Normalizing after transforming might make the model perform better. For more information, see [Numerical Data: Normalization](https://developers.google.com/machine-learning/crash-course/numerical-data/normalization).
+
+A related concept in [**categorical data**](https://developers.google.com/machine-learning/glossary#categorical_data) is the [**feature cross**](https://developers.google.com/machine-learning/glossary#feature_cross), which more frequently synthesizes two different features.
+
+1. ## Which of the following techniques _is not_ a form of feature engineering?
+
+	Hyperparameter tuning
+    
+    Hyperparameter tuning is a technique in which model configuration settings are modified to improve model performance during training. It does not involve modifying feature data.
+   
+    
+2. ## You are training a model on infant health data. One of your features is `birth_weight`. You would like to normalize these `birth_weight` values to train the model more efficiently. Which of the following normalization techniques would likely be the best choice?
+    
+     Z-score scaling
+    
+    Z-score scaling is a good choice for features that have a normal distribution of values, as birth weight does.
+    
+2. ## True or False: Binning is a technique for transforming categorical data into numerical data.
+    
+     False
+    
+    Binning transforms numerical data into categorical data.
+    
+3. ## Your training data for a shoe recommendation model contains the feature `shoe_size`, which should contain values between 6 and 16. The following table shows the `shoe_size` values for six examples in the dataset:
+    
+    |Example|`shoe_size`|
+    |---|---|
+    |1|8.5|
+    |2|9|
+    |3|N/A|
+    |4|105|
+    |5|11|
+    |6|9|
+    
+    Which examples should you consider scrubbing from the dataset prior to training? (Choose all that apply.)
+    
+    Choose as many answers as you see fit.
+    
+    Example 3 is missing a shoe-size value, so it makes sense to scrub this example from the dataset.
+    
+    Example 4 has a shoe-size value that appears to be an extreme outlier (perhaps it's supposed to be 10.5, which could be addressed as part of preprocessing the data), so it makes sense to scrub this example from the dataset.
+    
+    
+4. ## Fill in the blank in the following sentence:  
+    During feature engineering, synthetic features can be created to ___.
+
+Model non-linear relationships between two features
+
+Synthetic features can be created to model non-linear relationships between two features. These synthetic features can then be used as inputs to a linear model to enable it to represent nonlinearities.
+
+# Numerical data: Conclusion
+
+A machine learning (ML) model's health is determined by its data. Feed your model healthy data and it will thrive; feed your model junk and its predictions will be worthless.
+
+Best practices for working with numerical data:
+
+- Remember that your ML model interacts with the data in the [**feature vector**](https://developers.google.com/machine-learning/glossary#feature_vector), not the data in the [**dataset**](https://developers.google.com/machine-learning/glossary#dataset).
+- [**Normalize**](https://developers.google.com/machine-learning/glossary#normalization) most numerical [**features**](https://developers.google.com/machine-learning/glossary#feature).
+- If your first normalization strategy doesn't succeed, consider a different way to normalize your data.
+- [**Binning**](https://developers.google.com/machine-learning/glossary#binning), also referred to as [**bucketing**](https://developers.google.com/machine-learning/glossary#bucketing), is sometimes better than normalizing.
+- Considering what your data _should_ look like, write verification tests to validate those expectations. For example:
+    - The absolute value of latitude should never exceed 90. You can write a test to check if a latitude value greater than 90 appears in your data.
+    - If your data is restricted to the state of Florida, you can write tests to check that the latitudes fall between 24 through 31, inclusive.
+- Visualize your data with scatter plots and histograms. Look for anomalies.
+- Gather statistics not only on the entire dataset but also on smaller subsets of the dataset. That's because aggregate statistics sometimes obscure problems in smaller sections of a dataset.
+- Document all your data transformations.
+
+Data is your most valuable resource, so treat it with care.
+
+## Additional Information
+
+- The _Rules of Machine Learning_ guide contains a valuable [Feature Engineering](https://developers.google.com/machine-learning/rules-of-ml/#ml_phase_ii_feature_engineering) section.
+

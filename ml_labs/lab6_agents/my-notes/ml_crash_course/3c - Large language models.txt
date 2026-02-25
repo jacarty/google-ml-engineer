@@ -1,0 +1,464 @@
+# Large language models
+
+**Learning objectives**
+
+- Define a few different types of language models and their components.
+- Describe how large language models are created and the importance of context and parameters.
+- Identify how large language models take advantage of self-attention.
+- Reveal three key problems with large language models.
+- Explain how fine-tuning and distillation can improve a model's predictions and efficiency.
+## What is a language model?
+
+A [**language model**](https://developers.google.com/machine-learning/glossary#language-model) estimates the probability of a [**token**](https://developers.google.com/machine-learning/glossary#token) or sequence of tokens occurring within a longer sequence of tokens. A token could be a word, a subword (a subset of a word), or even a single character.
+
+#### Click the icon to learn more about tokens.
+
+*Most modern language models tokenize by subwords, that is, by chunks of text containing semantic meaning. The chunks could vary in length from single characters like punctuation or the possessive s to whole words. Prefixes and suffixes might be represented as separate subwords. For example, the word unwatched might be represented by the following three subwords:*
+
+- *un (the prefix)*
+- *watch (the root)*
+- *ed (the suffix)*
+
+*The word cats might be represented by the following two subwords:*
+
+- *cat (the root)*
+- *s (the suffix)*
+
+*A more complex word like "antidisestablishmentarianism" might be represented as six subwords:*
+
+- *anti*
+- *dis*
+- *establish*
+- *ment*
+- *arian*
+- *ism*
+
+*Tokenization is language specific, so the number of characters per token differs across languages. For English, one token corresponds to ~4 characters or about 3/4 of a word, so 400 tokens ~= 300 English words.*
+
+*Tokens are the atomic unit or smallest unit of language modeling.*
+
+*Tokens are now also being successfully applied to [computer vision](https://ai.googleblog.com/2023/03/scaling-vision-transformers-to-22.html) and [audio generation](https://ai.googleblog.com/2022/10/audiolm-language-modeling-approach-to.html).*
+
+
+Consider the following sentence and the token(s) that might complete it:
+
+When I hear rain on my roof, I _______ in my kitchen.
+
+A language model determines the probabilities of different tokens or sequences of tokens to complete that blank. For example, the following probability table identifies some possible tokens and their probabilities:
+
+| Probability | Token(s)         |
+| ----------- | ---------------- |
+| 9.4%        | cook soup        |
+| 5.2%        | warm up a kettle |
+| 3.6%        | cower            |
+| 2.5%        | nap              |
+| 2.2%        | relax            |
+
+In some situations, the sequence of tokens could be an entire sentence, paragraph, or even an entire essay.
+
+An application can use the probability table to make predictions. The prediction might be the highest probability (for example, "cook soup") or a random selection from tokens having a probability greater than a certain threshold.
+
+Estimating the probability of what fills in the blank in a text sequence can be extended to more complex tasks, including:
+
+- Generating text.
+- Translating text from one language to another.
+- Summarizing documents.
+
+By modeling the statistical patterns of tokens, modern language models develop extremely powerful internal representations of language and can generate plausible language.
+
+### N-gram language models
+
+[**N-grams**](https://developers.google.com/machine-learning/glossary#n-gram) are ordered sequences of words used to build language models, where N is the number of words in the sequence. For example, when N is 2, the N-gram is called a **2-gram** (or a [**bigram**](https://developers.google.com/machine-learning/glossary#bigram)); when N is 5, the N-gram is called a 5-gram. Given the following phrase in a training document:
+
+you are very nice
+
+The resulting 2-grams are as follows:
+
+- you are
+- are very
+- very nice
+
+When N is 3, the N-gram is called a **3-gram** (or a [**trigram**](https://developers.google.com/machine-learning/glossary#trigram)). Given that same phrase, the resulting 3-grams are:
+
+- you are very
+- are very nice
+
+Given two words as input, a language model based on 3-grams can predict the likelihood of the third word. For example, given the following two words:
+
+orange is
+
+A language model examines all the different 3-grams derived from its training corpus that start with `orange is` to determine the most likely third word. Hundreds of 3-grams could start with the two words `orange is`, but you can focus solely on the following two possibilities:
+
+orange is ripe
+orange is cheerful
+
+The first possibility (`orange is ripe`) is about orange the fruit, while the second possibility (`orange is cheerful`) is about the color orange.
+
+## Context
+
+Humans can retain relatively long contexts. While watching Act 3 of a play, you retain knowledge of characters introduced in Act 1. Similarly, the punchline of a long joke makes you laugh because you can remember the context from the joke's setup.
+
+In language models, **context** is helpful information before or after the target token. Context can help a language model determine whether "orange" refers to a citrus fruit or a color.
+
+Context can help a language model make better predictions, but does a 3-gram provide sufficient context? Unfortunately, the only context a 3-gram provides is the first two words. For example, the two words `orange is` doesn't provide enough context for the language model to predict the third word. Due to lack of context, language models based on 3-grams make a lot of mistakes.
+
+Longer N-grams would certainly provide more context than shorter N-grams. However, as N grows, the relative occurrence of each instance decreases. When N becomes very large, the language model typically has only a single instance of each occurrence of N tokens, which isn't very helpful in predicting the target token.
+
+### Recurrent neural networks
+
+[**Recurrent neural networks**](https://developers.google.com/machine-learning/glossary#recurrent-neural-network) provide more context than N-grams. A recurrent neural network is a type of [**neural network**](https://developers.google.com/machine-learning/glossary#neural-network) that trains on a sequence of tokens. For example, a recurrent neural network can _gradually_ learn (and learn to ignore) selected context from each word in a sentence, kind of like you would when listening to someone speak. A large recurrent neural network can gain context from a passage of several sentences.
+
+Although recurrent neural networks learn more context than N-grams, the amount of useful context recurrent neural networks can intuit is still relatively limited. Recurrent neural networks evaluate information "token by token." In contrast, large language models—the topic of the next section—can evaluate the whole context at once.
+
+Note that training recurrent neural networks for long contexts is constrained by the [**vanishing gradient problem**](https://developers.google.com/machine-learning/glossary#vanishing-gradient-problem).
+
+## Exercise: Check your understanding
+
+Which language model makes better predictions for English text?
+
+- A language model based on 6-grams
+- A language model based on 5-grams
+
+The language model based on 6-grams.
+
+The language model based on 5-grams.
+
+**The answer depends on the size and diversity of the training set.**
+
+*If the training set spans millions of diverse documents, then the model based on 6-grams will probably outperform the model based on 5-grams.*
+
+# LLMs: What's a large language model?
+
+A newer technology, [**large language models** (**LLMs**)](https://developers.google.com/machine-learning/glossary#large-language-model) predict a token or sequence of tokens, sometimes many paragraphs worth of predicted tokens. Remember that a token can be a word, a subword (a subset of a word), or even a single character. LLMs make much better predictions than N-gram language models or recurrent neural networks because:
+
+- LLMs contain far more [**parameters**](https://developers.google.com/machine-learning/glossary#parameter) than recurrent models.
+- LLMs gather far more context.
+
+This section introduces the most successful and widely used architecture for building LLMs: the Transformer.
+
+## What's a Transformer?
+
+Transformers are the state-of-the-art architecture for a wide variety of language model applications, such as translation:
+
+![[Pasted image 20251203073455.png]]
+**Figure 1.** A Transformer-based application that translates from English to French.
+
+Full transformers consist of an encoder and a decoder:
+
+- An [**encoder**](https://developers.google.com/machine-learning/glossary#encoder) converts input text into an intermediate representation. An encoder is an enormous [**neural net**](https://developers.google.com/machine-learning/glossary#neural-net).
+- A [**decoder**](https://developers.google.com/machine-learning/glossary#decoder) converts that intermediate representation into useful text. A decoder is also an enormous neural net.
+
+For example, in a translator:
+
+- The encoder processes the input text (for example, an English sentence) into some intermediate representation.
+- The decoder converts that intermediate representation into output text (for example, the equivalent French sentence).
+
+![[Pasted image 20251203073442.png]]
+**Figure 2.** A full Transformer contains both an encoder and a decoder.
+
+#### Click the icon to learn more about partial Transformers.
+
+This module focuses on full Transformers, which contain both an encoder and a decoder; however, encoder-only and decoder-only architectures also exist:
+
+- Encoder-only architectures map input text into an intermediate representation (often, an [**embedding layer**](https://developers.google.com/machine-learning/glossary#embedding_layer)). Use cases for encoder-only architectures include:
+    - Predicting any token in the input sequence (which is the conventional role of language models).
+    - Creating a sophisticated embedding, which could serve as the input for another system, such as a classifier.
+- Decoder-only architectures generate new tokens from the text already generated. Decoder-only models typically excel at generating sequences; modern decoder-only models can use their generation power to create continuations of dialog histories and other prompts.
+
+---
+### What is self-attention?
+
+To enhance context, Transformers rely heavily on a concept called [**self-attention**](https://developers.google.com/machine-learning/glossary#self-attention). Effectively, on behalf of each token of input, self-attention asks the following question:
+
+> "How much does each other token of input affect the interpretation of this token?"
+
+The "self" in "self-attention" refers to the input sequence. Some attention mechanisms weigh relations of input tokens to tokens in an output sequence like a translation or to tokens in some other sequence. But _self_-attention only weighs the importance of relations between tokens in the input sequence.
+
+To simplify matters, assume that each token is a word and the complete context is only a single sentence. Consider the following sentence:
+
+The animal didn't cross the street because it was too tired.
+
+The preceding sentence contains eleven words. Each of the eleven words is paying attention to the other ten, wondering how much each of those ten words matters to itself. For example, notice that the sentence contains the pronoun **it**. Pronouns are often ambiguous. The pronoun **it** typically refers to a recent noun or noun phrase, but in the example sentence, which recent noun does **it** refer to—the animal or the street?
+
+The self-attention mechanism determines the relevance of _each_ nearby word to the pronoun **it**. Figure 3 shows the results—the bluer the line, the more important that word is to the pronoun **it.** That is, **animal** is more important than **street** to the pronoun **it**.
+
+![[Pasted image 20251203073413.png]]
+**Figure 3.** Self-attention for the pronoun _it_. From [Transformer: A Novel Neural Network Architecture for Language Understanding](https://ai.googleblog.com/2017/08/transformer-novel-neural-network.html).
+
+Conversely, suppose the final word in the sentence changes as follows:
+
+The animal didn't cross the street because it was too wide.
+
+In this revised sentence, self-attention would hopefully rate **street** as more relevant than **animal** to the pronoun **it**.
+
+Some self-attention mechanisms are **bidirectional**, meaning that they calculate relevance scores for tokens _preceding_ and _following_ the word being attended to. For example, in Figure 3, notice that words on both sides of **it** are examined. So, a bidirectional self-attention mechanism can gather context from words on either side of the word being attended to. By contrast, a **unidirectional** self-attention mechanism can only gather context from words on one side of the word being attended to. Bidirectional self-attention is especially useful for generating representations of whole sequences, while applications that generate sequences token-by-token require unidirectional self-attention. For this reason, encoders use bidirectional self-attention, while decoders use unidirectional.
+
+### What is multi-head multi-layer self-attention?
+
+Each self-attention layer is typically comprised of multiple **self-attention heads**. The output of a layer is a mathematical operation (for example, weighted average or dot product) of the output of the different heads.
+
+Since the parameters of each head are initialized to random values, different heads can learn different relationships between each word being attended to and the nearby words. For example, the self-attention head described in the previous section focused on determining which noun the pronoun **it** referred to. However, other self-attention heads within the same layer might learn the grammatical relevance of each word to every other word, or learn other interactions.
+
+A complete transformer model stacks multiple **self-attention layers** on top of one another. The output from the previous layer becomes the input for the next. This stacking allows the model to build progressively more complex and abstract understandings of the text. While earlier layers might focus on basic syntax, deeper layers can integrate that information to grasp more nuanced concepts like sentiment, context, and thematic links across the entire input.
+
+#### Click the icon to learn about Big O for LLMs.
+Self-attention forces every word in the context to learn the relevance of all the other words in the context. So, it is tempting to proclaim this an O(N2) problem, where:
+
+- N is the number of tokens in the context.
+
+As if the preceding Big O weren't disturbing enough, Transformers contain multiple self-attention layers and multiple self-attention heads per self-attention layer, so Big O is actually:
+
+O(N2 · S · D)
+
+where:
+
+- S is the number of self-attention layers.
+- D is the number of heads per layer.
+
+---
+
+#### Click the icon to learn more about how LLMs are trained.
+
+You probably will never train an LLM from scratch. Training an industrial-strength LLM requires enormous amounts of ML expertise, computational resources, and time. Regardless, you clicked the icon to learn more, so we owe you an explanation.
+
+The primary ingredient in building a LLM is a phenomenal amount of training data (text), typically somewhat filtered. The first phase of training is usually some form of [**unsupervised learning**](https://developers.google.com/machine-learning/glossary#unsupervised-machine-learning) on that training data. Specifically, the model trains on **masked predictions**, meaning that certain tokens in the training data are intentionally hidden. The model trains by trying to predict those missing tokens. For example, assume the following sentence is part of the training data:
+
+The residents of the sleepy town weren't prepared for what came next.
+
+Random tokens are removed, for example:
+
+The ___ of the sleepy town weren't prepared for ___ came next.
+
+An LLM is just a neural net, so loss (the number of masked tokens the model correctly considered) guides the degree to which backpropagation updates parameter values.
+
+A Transformer-based model trained to predict missing data gradually learns to detect patterns and higher-order structures in the data to get clues about the missing token. Consider the following example masked instance:
+
+Oranges are traditionally ___ by hand. Once clipped from a tree, __ don't ripen.
+
+Extensive training on enormous numbers of masked examples enable an LLM to learn that "harvested" or "picked" are high probability matches for the first token and "oranges" or "they" are good choices for the second token.
+
+An optional further training step called [**instruction tuning**](https://developers.google.com/machine-learning/glossary#instruction-tuning) can improve an LLM's ability to follow instructions.
+
+---
+
+## Why are Transformers so large?
+
+Transformers contain hundreds of billion or even trillions of [**parameters**](https://developers.google.com/machine-learning/glossary#parameter). This course has generally recommended building models with a smaller number of parameters over those with a larger number of parameters. After all, a model with a smaller number of parameters uses fewer resources to make predictions than a model with a larger number of parameters. However, research shows that Transformers with more parameters consistently outperform Transformers with fewer parameters.
+
+## But how does an LLM _generate_ text?
+
+You've seen how researchers train LLMs to predict a missing word or two, and you might be unimpressed. After all, predicting a word or two is essentially the autocomplete feature built into various text, email, and authoring software. You might be wondering how LLMs can generate sentences or paragraphs or haikus about arbitrage.
+
+In fact, LLMs are essentially autocomplete mechanisms that can automatically predict (complete) thousands of tokens. For example, consider a sentence followed by a masked sentence:
+
+My dog, Max, knows how to perform many traditional dog tricks.
+___ (masked sentence)
+
+An LLM can generate probabilities for the masked sentence, including:
+
+|Probability|Word(s)|
+|---|---|
+|3.1%|For example, he can sit, stay, and roll over.|
+|2.9%|For example, he knows how to sit, stay, and roll over.|
+
+A sufficiently large LLM can generate probabilities for paragraphs and entire essays. You can think of a user's questions to an LLM as the "given" sentence followed by an imaginary mask. For example:
+
+User's question: What is the easiest trick to teach a dog?
+LLM's response:  ___
+
+The LLM generates probabilities for various possible responses.
+
+As another example, an LLM trained on a massive number of mathematical "word problems" can give the appearance of doing sophisticated mathematical reasoning. However, those LLMs are basically just autocompleting a word problem prompt.
+
+## Benefits of LLMs
+
+LLMs can generate clear, easy-to-understand text for a wide variety of target audiences. LLMs can make predictions on tasks they are explicitly trained on. Some researchers claim that LLMs can also make predictions for input they were _not_ explicitly trained on, but other researchers have refuted this claim.
+
+## Problems with LLMs
+
+_Training_ an LLM entails many problems, including:
+
+- Gathering an enormous training set.
+- Consuming multiple months and enormous computational resources and electricity.
+- Solving parallelism challenges.
+
+Using LLMs to _infer_ predictions causes the following problems:
+
+- LLMs [**hallucinate**](https://developers.google.com/machine-learning/glossary#hallucination), meaning their predictions often contain mistakes.
+- LLMs consume enormous amounts of computational resources and electricity. Training LLMs on larger datasets typically reduces the amount of resources required for inference, though the larger training sets incur more training resources.
+- Like all ML models, LLMs can exhibit all sorts of bias.
+
+## Exercise: Check your understanding
+
+Suppose a Transformer is trained on a billion documents, including thousands of documents containing at least one instance of the word _elephant_. Which of the following statements are probably true?
+
+The Transformer will gradually learn to ignore any sarcastic or ironic uses of the word _elephant_ in training data.
+
+**_Acacia trees_, an important part of an elephant's diet, will gradually gain a high self-attention score with the word _elephant_.**
+*Yes and this will enable the Transformer to answer questions about an elephant's diet.*
+
+**The Transformer will associate the word _elephant_ with various idioms that contain the word _elephant_.**
+*Yes, the system will begin to attach high self-attention scores between the word elephant and other words in elephant idioms.*
+
+# LLMs: Fine-tuning, distillation, and prompt engineering
+
+The [previous unit](https://developers.google.com/machine-learning/crash-course/llm/transformers) described general-purpose LLMs, variously known as:
+
+- **foundation LLMs**
+- **base LLMs**
+- **pre-trained LLMs**
+
+A foundation LLM is trained on enough natural language to "know" a remarkable amount about grammar, words, and idioms. A foundation language model can generate helpful sentences about topics it is trained on. Furthermore, a foundation LLM can perform certain tasks traditionally called "creative," like writing poetry. However, a foundation LLM's generative text output isn't a solution for other kinds of common ML problems, such as regression or classification. For these use cases, a foundation LLM can serve as a _platform_ rather than a solution.
+
+Transforming a foundation LLM into a solution that meets an application's needs requires a process called _fine-tuning_. A secondary process called _distillation_ generates a smaller (fewer parameters) version of the fine-tuned model.
+
+## Fine-tuning
+
+Research shows that the pattern-recognition abilities of foundation language models are so powerful that they sometimes require relatively little additional training to learn specific tasks. That additional training helps the model make better predictions on a specific task. This additional training, called [**fine-tuning**](https://developers.google.com/machine-learning/glossary#fine-tuning), unlocks an LLM's practical side.
+
+Fine-tuning trains on examples _specific_ to the task your application will perform. Engineers can sometimes fine-tune a foundation LLM on just a few hundred or a few thousand training examples.
+
+Despite the relatively tiny number of training examples, standard fine-tuning is often computationally expensive. That's because standard fine-tuning involves updating the weight and bias of every parameter on each [**backpropagation**](https://developers.google.com/machine-learning/glossary#backpropagation) iteration. Fortunately, a smarter process called [**parameter-efficient tuning**](https://developers.google.com/machine-learning/glossary#parameter-efficient-tuning) can fine-tune an LLM by adjusting only a _subset_ of parameters on each backpropagation iteration.
+
+A fine-tuned model's predictions are usually better than the foundation LLM's predictions. However, a fine-tuned model contains the same number of parameters as the foundation LLM. So, if a foundation LLM contains ten billion parameters, then the fine-tuned version will also contain ten billion parameters.
+
+## Distillation
+
+Most fine-tuned LLMs contain enormous numbers of parameters. Consequently, foundation LLMs require enormous computational and environmental resources to generate predictions. Note that large swaths of those parameters are typically irrelevant for a specific application.
+
+[**Distillation**](https://developers.google.com/machine-learning/glossary#distillation) creates a smaller version of an LLM. The distilled LLM generates predictions much faster and requires fewer computational and environmental resources than the full LLM. However, the distilled model's predictions are generally not quite as good as the original LLM's predictions. Recall that LLMs with more parameters almost always generate better predictions than LLMs with fewer parameters.
+
+#### Click the icon to learn how distillation works.
+
+The most common form of distillation uses bulk inference to label data. This labeled data is then used to train a new, smaller model (known as the student model) that can be more affordably served. The labeled data serves as a channel by which the larger model (known as the teacher model) funnels its knowledge to the smaller model.
+
+For example, suppose you need an online toxicity scorer for automatic moderation of comments. In this case, you can use a large offline toxicity scorer to label training data. Then, you can use that training data to distill a toxicity scorer model small enough to be served and handle live traffic.
+
+A teacher model can sometimes provide more labeled data than it was trained on. Alternatively, a teacher model can funnel a numerical score instead of a binary label to the student model. A numerical score provides a richer training signal than a binary label, enabling the student model to predict not only positive and negative classes but also borderline classes.
+
+## Prompt engineering
+
+[**Prompt engineering**](https://developers.google.com/machine-learning/glossary#prompt-engineering) enables an LLM's _end users_ to customize the model's output. That is, end users clarify how the LLM should respond to their prompt.
+
+Humans learn well from examples. So do LLMs. Showing one example to an LLM is called [**one-shot prompting**](https://developers.google.com/machine-learning/glossary#one-shot-prompting). For example, suppose you want a model to use the following format to output a fruit's family:
+
+> User inputs the name of a fruit: LLM outputs that fruit's class.
+
+A one-shot prompt shows the LLM a single example of the preceding format and then asks the LLM to complete a query based on that example. For instance:
+
+peach: drupe
+apple: ______
+
+A single example is sometimes sufficient. If it is, the LLM outputs a useful prediction. For instance:
+
+apple: pome
+
+In other situations, a single example is insufficient. That is, the user must show the LLM _multiple_ examples. For instance, the following prompt contains two examples:
+
+plum: drupe
+pear: pome
+lemon: ____
+
+Providing multiple examples is called [**few-shot prompting**](https://developers.google.com/machine-learning/glossary#few-shot-prompting). You can think of the first two lines of the preceding prompt as training examples.
+
+Can an LLM provide useful predictions with no examples ([**zero-shot prompting**](https://developers.google.com/machine-learning/glossary#zero-shot-prompting))? Sometimes, but LLMs like context. Without context, the following zero-shot prompt might return information about the technology company rather than the fruit:
+
+apple: _______
+
+**Note:** Prompt engineering doesn't alter the model's parameters. Prompts leverage the pattern-recognition abilities of the existing LLM.
+
+## Offline inference
+
+The number of parameters in an LLM is sometimes so large that [**online inference**](https://developers.google.com/machine-learning/glossary#online-inference) is too slow to be practical for real-world tasks like regression or classification. Consequently, many engineering teams rely on [**offline inference**](https://developers.google.com/machine-learning/glossary#offline-inference) (also known as _bulk inference_ or _static inference_) instead. In other words, rather than responding to queries at serving time, the trained model makes predictions in advance and then caches those predictions.
+
+It doesn't matter if it takes a long time for an LLM to complete its task if the LLM only has to perform the task once a week or once a month.
+
+For example, Google Search [used an LLM](https://blog.google/products/search/how-mum-improved-google-searches-vaccine-information/) to perform offline inference in order to cache a list of over 800 synonyms for Covid vaccines in more than 50 languages. Google Search then used the cached list to identify queries about vaccines in live traffic.
+
+## Use LLMs responsibly
+
+Like any form of machine learning, LLMs generally share the biases of:
+
+- The data they were trained on.
+- The data they were distilled on.
+
+Use LLMs fairly and responsibly, following the guidelines presented in the [**data modules**](https://developers.google.com/machine-learning/crash-course/numerical-data) and the [**Fairness module**](https://developers.google.com/machine-learning/crash-course/fairness).
+
+## Exercise: Check your understanding
+
+Which of the following statements is true about LLMs?
+
+A fine-tuned LLM contains fewer parameters than the foundation language model it was trained on.
+
+**A distilled LLM contains fewer parameters than the foundation language model it sprung from.**
+Yes, distillation reduces the number of parameters.
+
+As users perform more prompt engineering, the number of parameters in an LLM grows.
+
+# Large Language Models: Test Your Knowledge
+
+1. ## How many 2-grams (bigrams) are present in the following phrase:  
+    
+    `they visited New York last week`
+    
+     3
+    
+     4
+    
+     **5**
+    
+    There are five 2-grams in the phrase "they visited New York last week": "they visited", "visited New", "New York", "York last", and "last week".
+    
+     6
+    
+2. ## Which attributes of large language models help them make better predictions than other types of language models? (Choose all that apply)
+    
+    Choose as many answers as you see fit.
+    
+     **LLMs contain many more parameters.**
+    
+    By definition, a large language model is a model that has a very large number of parameters, which is helpful in making better predictions.
+    
+     **LLMs capture more context.**
+    
+    The large number of parameters in LLMs enable them to capture more context, which is helpful in making better predictions.
+    
+     LLMs don't need to be trained on as much data.
+    
+     LLMs never hallucinate.
+    
+3. ## True or False: A full Transformer consists of both an encoder and a decoder.
+    
+     **True**
+    
+    A Transformer contains both an encoder (which converts text to an intermediate representation) and a decoder (which converts an intermediate representation into text).
+    
+     False
+    
+4. ## An LLM is trained on a large corpus of data that includes the following example:
+    
+    `My cousin's new fashion line is so cool!`
+    
+    What mechanism helps the LLM learn that in this sentence, "cool" most likely means "great" and does not refer to the temperature of the clothing?
+    
+     Prompt engineering
+    
+     Decoder
+    
+     Distillation
+    
+     **Self-attention**
+    
+    Self-attention is the process LLMs use to weight the importance of relations between tokens in the input sequence. Self-attention enables LLMs to interpret words based on context, which in turn enables them to disambiguate in cases of multiple possible meanings.
+    
+5. ## Which of the following statements about fine-tuning vs. distilling is true?
+    
+     Fine-tuning increases the number of parameters in the model, whereas distillation decreases the number of parameters in the model.
+    
+     **Fine-tuning generally increases the quality of the model's predictions, whereas distillation generally decreases the quality of the model's predictions.**
+    
+    Fine-tuning updates the parameters of a model to improve its performance on a specialized task, improving prediction quality. By contrast, distillation's goal is to reduce the size of the model, which typically comes at the cost of some prediction quality.
+    
+     Fine-tuning is performed on text models, whereas distillation is performed on image models.
+    
+     None of the above are true.

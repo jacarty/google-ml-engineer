@@ -1,0 +1,850 @@
+# Datasets, generalization, and overfitting
+
+**Learning objectives**
+
+- Identify four different characteristics of data and datasets.
+- Identify at least four different causes of data unreliability.
+- Determine when to discard missing data and when to impute it.
+- Differentiate between direct and derived labels.
+- Identify two different ways to improve the quality of human-rated labels.
+- Explain why to subdivide a dataset into a training set, validation set, and test set; identify a potential problem in data splits.
+- Explain overfitting and identify three possible causes for it.
+- Explain the concept of regularization. In particular, explain the following:
+    - Bias versus variance (adaptation to outliers…)
+    - L2 regularization, including Lambda (regularization rate)
+    - Early stopping
+- Interpret different kinds of loss curves; detect convergence and overfitting in loss curves.
+
+## Introduction
+
+This module begins with a leading question. Choose one of the following answers:
+
+1 - If you had to prioritize improving one of the following areas in your machine learning project, which would have the most impact?
+
+Improving the quality of your dataset
+
+Data trumps all. The quality and size of the dataset matters much more than which shiny algorithm you use to build your model.
+
+Correct answer.
+
+Applying a more clever loss function to training your model
+
+
+
+And here's an even more leading question:
+
+2 - Take a guess: In your machine learning project, how much time do you typically spend on data preparation and transformation?
+
+More than half of the project time
+
+Yes, ML practitioners spend the majority of their time constructing datasets and doing feature engineering.
+
+Correct answer.
+
+Less than half of the project time
+
+In this module, you'll learn more about the characteristics of machine learning datasets, and how to prepare your data to ensure high-quality results when training and evaluating your model.
+
+# Datasets: Data characteristics
+
+A [**dataset**](https://developers.google.com/machine-learning/glossary#dataset) is a collection of [**examples**](https://developers.google.com/machine-learning/glossary#example).
+
+Many datasets store data in tables (grids), for example, as comma-separated values (CSV) or directly from spreadsheets or database tables. Tables are an intuitive input format for machine learning [**models**](https://developers.google.com/machine-learning/glossary#model). You can imagine each row of the table as an example and each column as a potential feature or label. That said, datasets may also be derived from other formats, including log files and protocol buffers.
+
+Regardless of the format, your ML model is only as good as the data it trains on. This section examines key data characteristics.
+
+## Types of data
+
+A dataset could contain many kinds of datatypes, including but certainly not limited to:
+
+- numerical data, which is covered in a [separate unit](https://developers.google.com/machine-learning/crash-course/numerical-data)
+- categorical data, which is covered in a [separate unit](https://developers.google.com/machine-learning/crash-course/categorical-data)
+- human language, including individual words and sentences, all the way up to entire text documents
+- multimedia (such as images, videos, and audio files)
+- outputs from other ML systems
+- [**embedding vectors**](https://developers.google.com/machine-learning/glossary#embedding-vector), which are covered in a later unit
+
+## Quantity of data
+
+As a rough rule of thumb, your model should train on at least an order of magnitude (or two) more examples than trainable parameters. However, good models generally train on _substantially_ more examples than that.
+
+Models trained on large datasets with few [**features**](https://developers.google.com/machine-learning/glossary#feature) generally outperform models trained on small datasets with a lot of features. Google has historically had great success training simple models on large datasets.
+
+Different datasets for different machine learning programs may require wildly different amounts of examples to build a useful model. For some relatively simple problems, a few dozen examples might be sufficient. For other problems, a trillion examples might be insufficient.
+
+It's possible to get good results from a small dataset if you are adapting an existing model already trained on large quantities of data from the same schema.
+
+## Quality and reliability of data
+
+Everyone prefers high quality to low quality, but quality is such a vague concept that it could be defined many different ways. This course defines **quality** pragmatically:
+
+> A high-quality dataset helps your model accomplish its goal. A low quality dataset inhibits your model from accomplishing its goal.
+
+A high-quality dataset is usually also reliable. **Reliability** refers to the degree to which you can _trust_ your data. A model trained on a reliable dataset is more likely to yield useful predictions than a model trained on unreliable data.
+
+In _measuring_ reliability, you must determine:
+
+- How common are label errors? For example, if your data is labeled by humans, how often did your human raters make mistakes?
+- Are your features _noisy_? That is, do the values in your features contain errors? Be realistic—you can't purge your dataset of all noise. Some noise is normal; for example, GPS measurements of any location always fluctuate a little, week to week.
+- Is the data properly filtered for your problem? For example, should your dataset include search queries from bots? If you're building a spam-detection system, then likely the answer is yes. However, if you're trying to improve search results for humans, then no.
+
+The following are common causes of unreliable data in datasets:
+
+- Omitted values. For example, a person forgot to enter a value for a house's age.
+- Duplicate examples. For example, a server mistakenly uploaded the same log entries twice.
+- Bad feature values. For example, someone typed an extra digit, or a thermometer was left out in the sun.
+- Bad labels. For example, a person mistakenly labeled a picture of an oak tree as a maple tree.
+- Bad sections of data. For example, a certain feature is very reliable, except for that one day when the network kept crashing.
+
+We recommend using automation to flag unreliable data. For example, unit tests that define or rely on an external formal data schema can flag values that fall outside of a defined range.
+
+**Note:** Any sufficiently large or diverse dataset almost certainly contains [**outliers**](https://developers.google.com/machine-learning/glossary#outliers) that fall outside your data schema or unit test bands. Determining how to handle outliers is an important part of machine learning. The [**Numerical data unit**](https://developers.google.com/machine-learning/crash-course/numerical-data) details how to handle numeric outliers.
+
+## Complete vs. incomplete examples
+
+In a perfect world, each example is **complete**; that is, each example contains a value for each feature.
+
+![[Pasted image 20251129095845.png]]
+**Figure 1.** A complete example.
+
+Unfortunately, real-world examples are often **incomplete**, meaning that at least one feature value is missing.
+
+![[Pasted image 20251129095856.png]]
+**Figure 2.** An incomplete example.
+
+Don't train a model on incomplete examples. Instead, fix or eliminate incomplete examples by doing one of the following:
+
+- Delete incomplete examples.
+- [**Impute**](https://developers.google.com/machine-learning/glossary#value-imputation) missing values; that is, convert the incomplete example to a complete example by providing well-reasoned guesses for the missing values.
+
+![[Pasted image 20251129095919.png]]
+**Figure 3.** Deleting incomplete examples from the dataset.
+
+![[Pasted image 20251129095937.png]]
+**Figure 4.** Imputing missing values for incomplete examples.
+
+If the dataset contains enough complete examples to train a useful model, then consider deleting the incomplete examples. Similarly, if only one feature is missing a significant amount of data and that one feature probably can't help the model much, then consider deleting that feature from the model inputs and seeing how much quality is lost by its removal. If the model works just or almost as well without it, that's great. Conversely, if you don't have enough complete examples to train a useful model, then you might consider imputing missing values.
+
+It's fine to delete useless or redundant examples, but it's bad to delete important examples. Unfortunately, it can be difficult to differentiate between useless and useful examples. If you can't decide whether to delete or impute, consider building two datasets: one formed by deleting incomplete examples and the other by imputing. Then, determine which dataset trains the better model.
+
+#### Click the icon to learn more about imputation handling.
+
+Clever algorithms can impute some pretty good missing values; however, imputed values are rarely as good as the actual values. Therefore, a good dataset tells the model which values are imputed and which are actual. One way to do this is to add an extra Boolean column to the dataset that indicates whether a particular feature's value is imputed. For example, given a feature named `temperature`, you could add an extra Boolean feature named something like `temperature_is_imputed`. Then, during training, the model will probably gradually learn to trust examples containing imputed values for feature `temperature` _less_ than examples containing actual (non-imputed) values.
+### Imputation
+Imputation is the process of generating well-reasoned data, not random or deceptive data. Be careful: good imputation can improve your model; bad imputation can hurt your model.
+
+One common algorithm is to use the mean or median as the imputed value. Consequently, when you represent a numerical feature with [**Z-scores**](https://developers.google.com/machine-learning/glossary#z-score-normalization), then the imputed value is typically 0 (because 0 is generally the mean Z-score).
+
+### Exercise: Check your understanding
+
+A sorted dataset, like the one in the following exercise, can sometimes simplify imputation. However, it is a bad idea to train on a sorted dataset. So, after imputation, randomize the order of examples in the training set.
+
+Here are two columns of a dataset sorted by `Timestamp`.
+
+|Timestamp|Temperature|
+|---|---|
+|June 8, 2023 09:00|12|
+|June 8, 2023 10:00|18|
+|June 8, 2023 11:00|missing|
+|June 8, 2023 12:00|24|
+|June 8, 2023 13:00|38|
+
+Which of the following would be a reasonable value to impute for the missing value of Temperature?
+
+51
+
+31
+
+23
+Probably. 23 is the mean of the adjacent values (12, 18, 24, and 38). However, we aren't seeing the rest of the dataset, so it is possible that 23 would be an outlier for 11:00 on other days.
+
+# Datasets: Labels
+
+## Direct versus proxy labels
+
+Consider two different kinds of labels:
+
+- **Direct labels**, which are labels identical to the prediction your model is trying to make. That is, the prediction your model is trying to make is exactly present as a column in your dataset. For example, a column named `bicycle owner` would be a direct label for a binary classification model that predicts whether or not a person owns a bicycle.
+- **Proxy labels**, which are labels that are similar—but not identical—to the prediction your model is trying to make. For example, a person subscribing to Bicycle Bizarre magazine probably—but not definitely—owns a bicycle.
+
+Direct labels are generally better than proxy labels. If your dataset provides a possible direct label, you should probably use it. Oftentimes though, direct labels aren't available.
+
+Proxy labels are always a compromise—an imperfect approximation of a direct label. However, some proxy labels are close enough approximations to be useful. Models that use proxy labels are only as useful as the connection between the proxy label and the prediction.
+
+Recall that every label must be represented as a floating-point number, similar to the [**feature vector**](https://developers.google.com/machine-learning/glossary#feature-vector) (because machine learning is fundamentally just a collection of mathematical operations). Sometimes, a direct label exists but can't be easily represented as a floating-point number. In this case, use a proxy label.
+
+### Exercise: Check your understanding
+
+Your company wants to do the following:
+
+> Mail coupons ("Get 15% off a new bicycle helmet") to bicycle owners.
+
+So, your model must do the following:
+
+> Predict which people own a bicycle.
+
+Unfortunately, the dataset doesn't contain a column named `bike owner`. However, the dataset does contain a column named `recently bought a bicycle`.
+
+Would `recently bought a bicycle` be a good proxy label or a poor proxy label for this model?
+
+Poor proxy label
+Good proxy label
+
+The column `recently bought a bicycle` is a relatively good proxy label. After all, most of the people who buy bicycles now own bicycles. Nevertheless, like all proxy labels, even very good ones, `recently bought a bicycle` is imperfect. After all, the person buying an item isn't always the person using (or owning) that item. For example, people sometimes buy bicycles as a gift.
+
+## Human-generated data
+
+Some data is **human-generated**; that is, one or more humans examine some information and provide a value, usually for the label. For example, one or more meteorologists could examine pictures of the sky and identify cloud types.
+
+Alternatively, some data is **automatically-generated**. That is, software (possibly, another machine learning model) determines the value. For example, a machine learning model could examine sky pictures and automatically identify cloud types.
+
+This section explores the advantages and disadvantages of human-generated data.
+
+Advantages
+
+- Human raters can perform a wide range of tasks that even sophisticated machine learning models may find difficult.
+- The process forces the owner of the dataset to develop clear and consistent criteria.
+
+Disadvantages
+
+- You typically pay human raters, so human-generated data can be expensive.
+- To err is human. Therefore, multiple human raters might have to evaluate the same data.
+
+Think through these questions to determine your needs:
+
+- How skilled must your raters be? (For example, must the raters know a specific language? Do you need linguists for dialogue or NLP applications?)
+- How many labeled examples do you need? How soon do you need them?
+- What's your budget?
+
+**Always double-check your human raters**. For example, label 1000 examples yourself, and see how your results match other raters' results. If discrepancies surface, don't assume your ratings are the correct ones, especially if a value judgment is involved. If human raters have introduced errors, consider adding instructions to help them and try again.
+
+#### Click the plus icon to learn more about human-generated data.
+
+Looking at your data by hand is a good exercise regardless of how you obtained your data. Andrej Karpathy did this on [ImageNet and wrote about the experience](http://karpathy.github.io/2014/09/02/what-i-learned-from-competing-against-a-convnet-on-imagenet).
+
+Models can train on a mix of automated and human-generated labels. However, for most models, an extra set of human-generated labels (which can become stale) are generally not worth the extra complexity and maintenance. That said, sometimes the human-generated labels can provide extra information not available in the automated labels.
+
+# Datasets: Class-imbalanced datasets
+
+## Class-balanced datasets versus class-imbalanced datasets
+
+Consider a dataset containing a [**categorical**](https://developers.google.com/machine-learning/glossary#categorical-data) label whose value is either the positive class or the negative class. In a [**class-balanced dataset**](https://developers.google.com/machine-learning/glossary#class-balanced-dataset), the number of [**positive classes**](https://developers.google.com/machine-learning/glossary#positive-class) and [**negative classes**](https://developers.google.com/machine-learning/glossary#negative-class) is about equal. For example, a dataset containing 235 positive classes and 247 negative classes is a balanced dataset.
+
+In a [**class-imbalanced dataset**](https://developers.google.com/machine-learning/glossary#class-imbalanced-dataset), one label is considerably more common than the other. In the real world, class-imbalanced datasets are far more common than class-balanced datasets. For example, in a dataset of credit card transactions, fraudulent purchases might make up less than 0.1% of the examples. Similarly, in a medical diagnosis dataset, the number of patients with a rare virus might be less than 0.01% of the total examples. In a class-imbalanced dataset:
+
+- The _more_ common label is called the [**majority class**](https://developers.google.com/machine-learning/glossary#majority_class).
+- The _less_ common label is called the [**minority class**](https://developers.google.com/machine-learning/glossary#minority_class).
+
+## The difficulty of training severely class-imbalanced datasets
+
+Training aims to create a model that successfully distinguishes the positive class from the negative class. To do so, [**batches**](https://developers.google.com/machine-learning/glossary#batch) need a sufficient number of _both_ positive classes and negative classes. That's not a problem when training on a mildly class-imbalanced dataset since even small batches typically contain sufficient examples of both the positive class and the negative class. However, a severely class-imbalanced dataset might not contain enough minority class examples for proper training.
+
+For example, consider the class-imbalanced dataset illustrated in Figure 6 in which:
+
+- 200 labels are in the majority class.
+- 2 labels are in the minority class.
+
+![[Pasted image 20251129122417.png]]
+**Figure 6.** A highly imbalanced floral dataset containing far more sunflowers than roses.
+
+If the batch size is 20, most batches won't contain any examples of the minority class. If the batch size is 100, each batch will contain an average of only one minority class example, which is insufficient for proper training. Even a much larger batch size will still yield such an imbalanced proportion that the model might not train properly.
+
+**Note:** [**Accuracy**](https://developers.google.com/machine-learning/glossary#accuracy) is usually a poor metric for assessing a model trained on a class-imbalanced dataset. See [Classification: Accuracy, recall, precision, and related metrics](https://developers.google.com/machine-learning/crash-course/classification/accuracy-precision-recall) for details.
+
+## Training a class-imbalanced dataset
+
+During training, a model should learn two things:
+
+- What each class looks like; that is, what feature values correspond to what class?
+- How common each class is; that is, what is the relative distribution of the classes?
+
+Standard training conflates these two goals. In contrast, the following two-step technique called **downsampling and upweighting the majority class** separates these two goals, enabling the model to achieve _both_ goals.
+
+**Note:** Many students read the following section and say some variant of, "That just can't be right." Be warned that downsampling and upweighting the majority class is somewhat counterintuitive.
+
+### Step 1: Downsample the majority class
+
+[**Downsampling**](https://developers.google.com/machine-learning/glossary#downsampling) means training on a disproportionately low percentage of majority class examples. That is, you artificially force a class-imbalanced dataset to become somewhat more balanced by omitting many of the majority class examples from training. Downsampling greatly increases the probability that each batch contains enough examples of the minority class to train the model properly and efficiently.
+
+For example, the class-imbalanced dataset shown in Figure 6 consists of 99% majority class and 1% minority class examples. Downsampling the majority class by a factor of 25 artificially creates a more balanced training set (80% majority class to 20% minority class) suggested in Figure 7:
+
+![[Pasted image 20251129122432.png]]
+**Figure 7.** Downsampling the majority class by a factor of 25.
+
+### Step 2: Upweight the downsampled class
+
+Downsampling introduces a [**prediction bias**](https://developers.google.com/machine-learning/glossary#prediction-bias) by showing the model an artificial world where the classes are more balanced than in the real world. To correct this bias, you must "upweight" the majority classes by the factor to which you downsampled. Upweighting means treating the loss on a majority class example more harshly than the loss on a minority class example.
+
+For example, we downsampled the majority class by a factor of 25, so we must upweight the majority class by a factor of 25. That is, when the model mistakenly predicts the majority class, treat the loss as if it were 25 errors (multiply the regular loss by 25).
+
+![[Pasted image 20251129122442.png]]
+**Figure 8.** Upweighting the majority class by a factor of 25.
+
+How much should you downsample and upweight to rebalance your dataset? To determine the answer, you should experiment with different downsampling and upweighting factors just as you would experiment with other [**hyperparameters**](https://developers.google.com/machine-learning/glossary#hyperparameter).
+
+### Benefits of this technique
+
+Downsampling and upweighting the majority class brings the following benefits:
+
+- **Better model:** The resultant model "knows" both of the following:
+    - The connection between features and labels
+    - The true distribution of the classes
+- **Faster convergence:** During training, the model sees the minority class more often, which helps the model converge faster.
+
+# Datasets: Dividing the original dataset
+
+All good software engineering projects devote considerable energy to _testing_ their apps. Similarly, we strongly recommend testing your ML model to determine the correctness of its predictions.
+
+## Training, validation, and test sets
+
+You should test a model against a _different_ set of examples than those used to train the model. As you'll learn [a little later](https://developers.google.com/machine-learning/crash-course/overfitting/dividing-datasets#additional_problems_with_test_sets), testing on different examples is stronger proof of your model's fitness than testing on the same set of examples. Where do you get those different examples? Traditionally in machine learning, you get those different examples by splitting the original dataset. You might assume, therefore, that you should split the original dataset into two subsets:
+
+- A [**training set**](https://developers.google.com/machine-learning/glossary#training-set) that the model trains on.
+- A [**test set**](https://developers.google.com/machine-learning/glossary#test-set) for evaluation of the trained model.
+
+![[Pasted image 20251129123112.png]]
+**Figure 8.** Not an optimal split.
+
+### Exercise: Check your intuition
+
+Suppose you train on the training set and evaluate on the test set over multiple rounds. In each round, you use the test set results to guide how to update hyperparameters and the feature set. Can you see anything wrong with this approach? Pick only one answer.
+
+This approach is computationally inefficient. Don't change hyperparameters or feature sets after each round of testing.
+
+This approach is fine. After all, you're training on the training set and evaluating on a separate test set.
+
+**Doing many rounds of this procedure might cause the model to implicitly fit the peculiarities of the test set.**
+
+*Yes! The more often you use the same test set, the more likely the model closely fits the test set. Like a teacher "teaching to the test," the model inadvertently fits the test set, which might make it harder for the model to fit real-world data.*
+
+
+Dividing the dataset into two sets is a decent idea, but a better approach is to divide the dataset into _three_ subsets. In addition to the training set and the test set, the third subset is:
+
+- A [**validation set**](https://developers.google.com/machine-learning/glossary#validation-set) performs the initial testing on the model as it is being trained.
+
+![[Pasted image 20251129123126.png]]
+**Figure 9.** A much better split.
+
+Use the **validation set** to evaluate results from the training set. After repeated use of the validation set suggests that your model is making good predictions, use the test set to double-check your model.
+
+The following figure suggests this workflow. In the figure, "Tweak model" means adjusting anything about the model —from changing the learning rate, to adding or removing features, to designing a completely new model from scratch.
+
+![[Pasted image 20251129123139.png]]
+**Figure 10.** A good workflow for development and testing.
+
+**Note:** When you transform a feature in your training set, you must make the _same_ transformation in the validation set, test set, and real-world dataset.
+
+The workflow shown in Figure 10 is optimal, but even with that workflow, test sets and validation sets still "wear out" with repeated use. That is, the more you use the same data to make decisions about hyperparameter settings or other model improvements, the less confidence that the model will make good predictions on new data. For this reason, it's a good idea to collect more data to "refresh" the test set and validation set. Starting anew is a great reset.
+
+### Exercise: Check your intuition
+
+You shuffled all the examples in the dataset and divided the shuffled examples into training, validation, and test sets. However, the loss value on your test set is so staggeringly low that you suspect a mistake. What might have gone wrong?
+
+By chance, the test set just happened to contain examples that the model performed well on.
+
+Training and testing are nondeterministic. Sometimes, by chance, your test loss is incredibly low. Rerun the test to confirm the result.
+
+**Many of the examples in the test set are duplicates of examples in the training set.**
+
+*Yes. This can be a problem in a dataset with a lot of redundant examples. We strongly recommend deleting duplicate examples from the test set before testing.*
+
+## Additional problems with test sets
+
+As the previous question illustrates, duplicate examples can affect model evaluation. After splitting a dataset into training, validation, and test sets, delete any examples in the validation set or test set that are duplicates of examples in the training set. The only fair test of a model is against new examples, not duplicates.
+
+For example, consider a model that predicts whether an email is spam, using the subject line, email body, and sender's email address as features. Suppose you divide the data into training and test sets, with an 80-20 split. After training, the model achieves 99% precision on both the training set and the test set. You'd probably expect a lower precision on the test set, so you take another look at the data and discover that many of the examples in the test set are duplicates of examples in the training set. The problem is that you neglected to scrub duplicate entries for the same spam email from your input database before splitting the data. You've inadvertently trained on some of your test data.
+
+In summary, a good test set or validation set meets all of the following criteria:
+
+- Large enough to yield statistically significant testing results.
+- Representative of the dataset as a whole. In other words, don't pick a test set with different characteristics than the training set.
+- Representative of the real-world data that the model will encounter as part of its business purpose.
+- Zero examples duplicated in the training set.
+
+### Exercises: Check your understanding
+
+1 - Given a single dataset with a fixed number of examples, which of the following statements is true?
+
+The number of examples in the test set must be greater than the number of examples in the validation set or training set.
+
+**Every example used in testing the model is one less example used in training the model.**
+Dividing examples into train/test/validation sets is a zero-sum game. This is the central trade-off.
+
+The number of examples in the test set must be greater than the number of examples in the validation set.
+
+2 - Suppose your test set contains enough examples to perform a statistically significant test. Furthermore, testing against the test set yields low loss. However, the model performed poorly in the real world. What should you do?
+
+Retest on the same test set. The test results might have been an anomaly.
+
+**Determine how the original dataset differs from real-life data.**
+
+Yes. Even the best datasets are only a snapshot of real-life data; the underlying [ground truth](https://developers.google.com/machine-learning/glossary#ground-truth) tends to change over time. Although your test set matched your training set well enough to suggest good model quality, your dataset probably doesn't adequately match real-world data. You might have to retrain and retest against a new dataset.
+
+3 - How many examples should the test set contain?
+
+At least 15% of the original dataset.
+
+**Enough examples to yield a statistically significant test.**
+
+Yes. How many examples is that? You'll need to experiment.
+
+# Datasets: Transforming data
+
+Machine learning models can only train on floating-point values. However, many dataset features are _not_ naturally floating-point values. Therefore, one important part of machine learning is transforming non-floating-point features to floating-point representations.
+
+For example, suppose `street names` is a feature. Most street names are strings, such as "Broadway" or "Vilakazi". Your model can't train on "Broadway", so you must transform "Broadway" to a floating-point number. The [Categorical Data module](https://developers.google.com/machine-learning/crash-course/categorical-data) explains how to do this.
+
+Additionally, you should even transform most floating-point features. This transformation process, called [**normalization**](https://developers.google.com/machine-learning/glossary#normalization), converts floating-point numbers to a constrained range that improves model training. The [Numerical Data module](https://developers.google.com/machine-learning/crash-course/numerical-data) explains how to do this.
+
+## Sample data when you have too much of it
+
+Some organizations are blessed with an abundance of data. When the dataset contains too many examples, you must select a _subset_ of examples for training. When possible, select the subset that is most relevant to your model's predictions.
+
+## Filter examples containing PII
+
+Good datasets omit examples containing Personally Identifiable Information (PII). This policy helps safeguard privacy but can influence the model.
+
+See the Safety and Privacy module later in the course for more on these topics.
+
+# Generalization
+
+Watch the video below to learn about a common problem ML practitioners face when training a model on their training dataset.
+
+A [**model's**](https://developers.google.com/machine-learning/glossary#model) ability to make correct predictions on new, previously unseen data. A model that can generalize is the opposite of a model that is [**overfitting**](https://developers.google.com/machine-learning/glossary#overfitting).
+
+#### Click the icon for additional notes.
+
+You train a model on the examples in the training set. Consequently, the model learns the peculiarities of the data in the training set. Generalization essentially asks whether your model can make good predictions on examples that are _not_ in the training set.
+
+To encourage generalization, [**regularization**](https://developers.google.com/machine-learning/glossary#regularization) helps a model train less exactly to the peculiarities of the data in the training set.
+
+# Overfitting
+
+[**Overfitting**](https://developers.google.com/machine-learning/glossary#overfitting) means creating a model that matches (_memorizes_) the [**training set**](https://developers.google.com/machine-learning/glossary#training-set) so closely that the model fails to make correct predictions on new data. An overfit model is analogous to an invention that performs well in the lab but is worthless in the real world.
+
+**Tip:** Overfitting is a common problem in machine learning, not an academic hypothetical.
+
+In Figure 11, imagine that each geometric shape represents a tree's position in a square forest. The blue diamonds mark the locations of healthy trees, while the orange circles mark the locations of sick trees.
+
+![[Pasted image 20251129131449.png]]
+**Figure 11.** Training set: locations of healthy and sick trees in a square forest.
+
+Mentally draw any shapes—lines, curves, ovals...anything—to separate the healthy trees from the sick trees. Then, expand the next line to examine one possible separation.
+
+#### Expand to see one possible solution (Figure 12).
+
+![[Pasted image 20251129131505.png]]
+**Figure 12.** A complex model for distinguishing sick from healthy trees.
+
+The complex shapes shown in Figure 12 successfully categorized all but two of the trees. If we think of the shapes as a model, then this is a fantastic model.
+
+Or is it? A truly excellent model successfully categorizes _new_ examples. Figure 13 shows what happens when that same model makes predictions on new examples from the test set:
+
+![[Pasted image 20251129131519.png]]
+**Figure 13.**Test set: a complex model for distinguishing sick from healthy trees.
+
+So, the complex model shown in Figure 12 did a great job on the training set but a pretty bad job on the test set. This is a classic case of a model _overfitting_ to the training set data.
+
+## Fitting, overfitting, and underfitting
+
+A model must make good predictions on _new_ data. That is, you're aiming to create a model that "fits" new data.
+
+As you've seen, an overfit model makes excellent predictions on the training set but poor predictions on new data. An [**underfit**](https://developers.google.com/machine-learning/glossary#underfitting) model doesn't even make good predictions on the training data. If an overfit model is like a product that performs well in the lab but poorly in the real world, then an underfit model is like a product that doesn't even do well in the lab.
+
+![[Pasted image 20251129131543.png]]
+**Figure 14.** Underfit, fit, and overfit models.
+
+[**Generalization**](https://developers.google.com/machine-learning/glossary#generalization) is the opposite of overfitting. That is, a model that _generalizes well_ makes good predictions on new data. Your goal is to create a model that generalizes well to new data.
+
+## Detecting overfitting
+
+The following curves help you detect overfitting:
+
+- loss curves
+- generalization curves
+
+A [**loss curve**](https://developers.google.com/machine-learning/glossary#loss-curve) plots a model's loss against the number of training iterations. A graph that shows two or more loss curves is called a [**generalization curve**](https://developers.google.com/machine-learning/glossary#generalization-curve). The following generalization curve shows two loss curves:
+
+![[Pasted image 20251129131603.png]]
+**Figure 15.** A generalization curve that strongly implies overfitting.
+
+Notice that the two loss curves behave similarly at first and then diverge. That is, after a certain number of iterations, loss declines or holds steady (converges) for the training set, but increases for the validation set. This suggests overfitting.
+
+In contrast, a generalization curve for a well-fit model shows two loss curves that have similar shapes.
+
+## What causes overfitting?
+
+Very broadly speaking, overfitting is caused by one or both of the following problems:
+
+- The training set doesn't adequately represent real life data (or the validation set or test set).
+- The model is too complex.
+
+## Generalization conditions
+
+A model trains on a training set, but the real test of a model's worth is how well it makes predictions on new examples, particularly on real-world data. While developing a model, your test set serves as a proxy for real-world data. Training a model that generalizes well implies the following dataset conditions:
+
+- Examples must be [**independently and identically distributed**](https://developers.google.com/machine-learning/glossary#independently-and-identically-distributed-i.i.d), which is a fancy way of saying that your examples can't influence each other.
+- The dataset is [**stationary**](https://developers.google.com/machine-learning/glossary#stationarity), meaning the dataset doesn't change significantly over time.
+- The dataset partitions have the same distribution. That is, the examples in the training set are statistically similar to the examples in the validation set, test set, and real-world data.
+
+Explore the preceding conditions through the following exercises.
+
+## Exercises: Check your understanding
+
+Consider the following dataset partitions.
+
+![[Pasted image 20251129131615.png]]
+1 - What should you do to ensure that the examples in the training set have a similar statistical distribution to the examples in the validation set and the test set?
+
+**Shuffle the examples in the dataset extensively before partitioning them.**
+*Yes. Good shuffling of examples makes partitions much more likely to be statistically similar.*
+
+Do nothing. Given enough examples, the law of averages naturally ensures that the distributions will be statistically similar.
+
+Sort the examples from earliest to most recent.
+
+2 - A streaming service is developing a model to predict the popularity of potential new television shows for the next three years. The streaming service plans to train the model on a dataset containing hundreds of millions of examples, spanning the previous ten years. Will this model encounter a problem?
+
+**Probably. Viewers' tastes change in ways that past behavior can't predict.**
+*Yes. Viewer tastes are not stationary. They constantly change.*
+
+Probably not. Viewers' tastes change in predictably cyclical ways. Ten years of data will enable the model to make good predictions on future trends.
+
+Definitely not. The dataset is large enough to make good predictions.
+
+3 - A model aims to predict the time it takes for people to walk a mile based on weather data (temperature, dew point, and precipitation) collected over one year in a city whose weather varies significantly by season. Can you build and test a model from this dataset, even though the weather readings change dramatically by season?
+
+No
+
+**Yes**
+*Yes, it is possible to build and test a model from this dataset. You just have to ensure that the data is partitioned equally, so that data from all four seasons is distributed equally into the different partitions.*
+
+### Challenge exercise
+
+You are creating a model that predicts the ideal date for riders to buy a train ticket for a particular route. For example, the model might recommend that users buy their ticket on July 8 for a train that departs July 23. The train company updates prices hourly, basing their updates on a variety of factors but mainly on the current number of available seats. That is:
+
+- If a lot of seats are available, ticket prices are typically low.
+- If very few seats are available, ticket prices are typically high.
+
+Your model exhibits low loss on the validation set and the test set but sometimes makes terrible predictions on real-world data. Why?
+
+**Answer:** The real world model is struggling with a **[feedback loop](https://developers.google.com/machine-learning/glossary#feedback-loop)**.
+
+For example, suppose the model recommends that users buy tickets on July 8. Some riders who use the model's recommendation buy their tickets at 8:30 in the morning on July 8. At 9:00, the train company raises prices because fewer seats are now available. Riders using the model's recommendation have altered prices. By evening, ticket prices might be much higher than in the morning.
+
+# Overfitting: Model complexity
+
+The previous unit introduced the following model, which miscategorized a lot of trees in the test set:
+
+![[Pasted image 20251129132246.png]]
+**Figure 16.** The misbehaving complex model from the previous unit.
+
+The preceding model contains a lot of complex shapes. Would a simpler model handle new data better? Suppose you replace the complex model with a ridiculously simple model--a straight line.
+
+![[Pasted image 20251129132258.png]]
+**Figure 17.** A much simpler model.
+
+The simple model generalizes better than the complex model on new data. That is, the simple model made better predictions on the test set than the complex model.
+
+Simplicity has been beating complexity for a long time. In fact, the preference for simplicity dates back to ancient Greece. Centuries later, a fourteenth-century friar named William of Occam formalized the preference for simplicity in a philosophy known as [Occam's razor](https://wikipedia.org/wiki/Occam%27s_razor). This philosophy remains an essential underlying principle of many sciences, including machine learning.
+
+**Note:** Complex models typically outperform simple models on the training set. However, simple models typically outperform complex models on the test set (which is more important).
+
+### Exercises: Check your understanding
+
+You are developing a physics equation. Which of the following formulas conform more closely to Occam's Razor?
+
+A formula with twelve variables.
+
+**A formula with three variables.**
+
+You're on a brand-new machine learning project, about to select your first features. How many features should you pick?
+
+Pick as many features as you can, so you can start observing which features have the strongest predictive power.
+
+**Pick 1–3 features that seem to have strong predictive power.**
+*It's best for your data collection pipeline to start with only one or two features. This will help you confirm that the ML model works as intended. Also, when you build a baseline from a couple of features, you'll feel like you're making progress!*
+
+Pick 4–6 features that seem to have strong predictive power.
+
+## Regularization
+
+Machine learning models must simultaneously meet two conflicting goals:
+
+- Fit data well.
+- Fit data as simply as possible.
+
+One approach to keeping a model simple is to penalize complex models; that is, to force the model to become simpler during training. Penalizing complex models is one form of **regularization**.
+
+**A regularization analogy:** Suppose every student in a lecture hall had a little buzzer that emitted a sound that annoyed the professor. Students would press the buzzer whenever the professor's lecture became too complicated. Annoyed, the professor would be forced to simplify the lecture. The professor would complain, "When I simplify, I'm not being precise enough." The students would counter with, "The only goal is to explain it simply enough that I understand it." Gradually, the buzzers would train the professor to give an appropriately simple lecture, even if the simpler lecture isn't as sufficiently precise.
+
+### Loss and complexity
+
+So far, this course has suggested that the only goal when training was to minimize loss; that is:
+
+*minimize(loss)*
+
+As you've seen, models focused solely on minimizing loss tend to overfit. A better training optimization algorithm minimizes some combination of loss and complexity:
+
+*minimize(loss + complexity)*
+
+Unfortunately, loss and complexity are typically inversely related. As complexity increases, loss decreases. As complexity decreases, loss increases. You should find a reasonable middle ground where the model makes good predictions on both the training data and real-world data. That is, your model should find a reasonable compromise between loss and complexity.
+
+## What is complexity?
+
+You've already seen a few different ways of quantifying loss. How would you quantify complexity? Start your exploration through the following exercise:
+
+### Exercise: Check your intuition
+
+So far, we've been pretty vague about what _complexity_ actually is. Which of the following ideas do you think would be reasonable complexity metrics?
+
+Complexity is a function of the square of the model's weights.
+*Yes, this is one way to measure some models' complexity. This metric is called [**L1 regularization.**](https://developers.google.com/machine-learning/glossary#L1_regularization*)
+Complexity is a function of the model's weights.
+
+Complexity is a function of the biases of all the features in the model.
+*Yes, you can measure some models' complexity this way. This metric is called [**L2 regularization**](https://developers.google.com/machine-learning/glossary#L2_regularization)*
+
+# Overfitting: L2 regularization
+
+[**L2 regularization**](https://developers.google.com/machine-learning/glossary#l2-regularization) is a popular regularization metric, which uses the following formula:
+![[Pasted image 20251129133043.png]]
+For example, the following table shows the calculation of L2 regularization for a model with six weights:
+
+![[Pasted image 20251129133058.png]]
+Notice that weights close to zero don't affect L2 regularization much, but large weights can have a huge impact. For example, in the preceding calculation:
+
+- A single weight (w3) contributes about 93% of the total complexity.
+- The other five weights collectively contribute only about 7% of the total complexity.
+
+L2 regularization encourages weights _toward_ 0, but never pushes weights all the way to zero.
+
+### Exercises: Check your understanding
+
+If you use L2 regularization while training a model, what will typically happen to the overall complexity of the model?
+
+**The overall complexity of the system will probably drop.**
+*Since L2 regularization encourages weights towards 0, the overall complexity will probably drop.*
+
+The overall complexity of the model will probably stay constant.
+
+The overall complexity of the model will probably increase.
+
+If you use L2 regularization while training a model, some features will be removed from the model.
+
+True
+
+**False**
+*L2 regularization never pushes weights all the way to zero.*
+
+## Regularization rate (lambda - ƛ)
+
+As noted, training attempts to minimize some combination of loss and complexity:
+
+*minimize(loss + complexity)*
+
+Model developers tune the overall impact of complexity on model training by multiplying its value by a scalar called the [**regularization rate**](https://developers.google.com/machine-learning/glossary#regularization-rate). The Greek character lambda typically symbolizes the regularization rate.
+
+That is, model developers aim to do the following:
+
+*minimize(loss + ƛ complexity)*
+
+A high regularization rate:
+
+- Strengthens the influence of regularization, thereby reducing the chances of overfitting.
+- Tends to produce a histogram of model weights having the following characteristics:
+    - a normal distribution
+    - a mean weight of 0.
+
+A low regularization rate:
+
+- Lowers the influence of regularization, thereby increasing the chances of overfitting.
+- Tends to produce a histogram of model weights with a flat distribution.
+
+For example, the histogram of model weights for a high regularization rate might look as shown in Figure 18.
+
+![[Pasted image 20251129133228.png]]
+**Figure 18.** Weight histogram for a high regularization rate. Mean is zero. Normal distribution.
+
+In contrast, a low regularization rate tends to yield a flatter histogram, as shown in Figure 19.
+
+![[Pasted image 20251129133242.png]]
+**Figure 19.** Weight histogram for a low regularization rate. Mean may or may not be zero.
+
+**Note:** Setting the regularization rate to zero removes regularization completely. In this case, training focuses exclusively on minimizing loss, which poses the highest possible overfitting risk.
+
+### Picking the regularization rate
+
+The ideal regularization rate produces a model that generalizes well to new, previously unseen data. Unfortunately, that ideal value is data-dependent, so you must do some tuning.
+
+### Early stopping: an alternative to complexity-based regularization
+
+[**Early stopping**](https://developers.google.com/machine-learning/glossary#early-stopping) is a regularization method that doesn't involve a calculation of complexity. Instead, early stopping simply means ending training before the model fully converges. For example, you end training when the loss curve for the validation set starts to increase (slope becomes positive).
+
+Although early stopping usually increases training loss, it can decrease test loss.
+
+Early stopping is a quick, but rarely optimal, form of regularization. The resulting model is very unlikely to be as good as a model trained thoroughly on the ideal regularization rate.
+
+### Finding equilibrium between learning rate and regularization rate
+
+[**Learning rate**](https://developers.google.com/machine-learning/glossary#learning-rate) and regularization rate tend to pull weights in opposite directions. A high learning rate often pulls weights _away from_ zero; a high regularization rate pulls weights _towards_ zero.
+
+If the regularization rate is high with respect to the learning rate, the weak weights tend to produce a model that makes poor predictions. Conversely, if the learning rate is high with respect to the regularization rate, the strong weights tend to produce an overfit model.
+
+Your goal is to find the equilibrium between learning rate and regularization rate. This can be challenging. Worst of all, once you find that elusive balance, you may have to ultimately change the learning rate. And, when you change the learning rate, you'll again have to find the ideal regularization rate.
+
+# Overfitting: Interpreting loss curves
+
+Machine learning would be much simpler if all your [**loss curves**](https://developers.google.com/machine-learning/glossary#loss_curve) looked like this the first time you trained your model:
+
+![[Pasted image 20251129134930.png]]
+**Figure 20.** An ideal loss curve.
+
+Unfortunately, loss curves are often challenging to interpret. Use your intuition about loss curves to solve the exercises on this page.
+
+## Exercise 1: Oscillating loss curve
+
+![[Pasted image 20251129134945.png]]
+**Figure 21.** Oscillating loss curve.
+
+What **three** things could you do to try improve the loss curve shown in Figure 21?
+
+Increase the number of examples in the training set.
+
+**Reduce the learning rate.**
+*Yes, reducing learning rate is often a good idea when debugging a training problem.*
+
+**Reduce the training set to a tiny number of trustworthy examples.**
+*Although this technique sounds artificial, it is actually a good idea. Assuming that the model converges on the small set of trustworthy examples, you can then gradually add more examples, perhaps discovering which examples cause the loss curve to oscillate.*
+
+**Check your data against a data schema to detect bad examples, and then remove the bad examples from the training set.**
+Yes, this is a good practice for all models.
+
+Increase the learning rate.
+
+## Exercise 2. Loss curve with a sharp jump
+
+![[Pasted image 20251129134958.png]]
+**Figure 22.** Sharp rise in loss.
+
+Which **two** of the following statements identify possible reasons for the exploding loss shown in Figure 22?
+
+The regularization rate is too high.
+
+The learning rate is too low.
+
+**The input data contains a burst of outliers.**
+*Sometimes, due to improper shuffling of batches, a batch might contain a lot of outliers.*
+
+**The input data contains one or more NaNs—for example, a value caused by a division by zero.**
+*This is more common than you might expect.*
+
+## Exercise 3. Test loss diverges from training loss
+
+![[Pasted image 20251129135010.png]]
+**Figure 23.** Sharp rise in validation loss.
+
+Which **one** of the following statements best identifies the reason for this difference between the loss curves of the training and test sets?
+
+The learning rate is too high.
+
+**The model is overfitting the training set.**
+*Yes, it probably is. Possible solutions:*
+
+- *Make the model simpler, possibly by reducing the number of features.*
+- *Increase the regularization rate.*
+- *Ensure that the training set and test set are statistically equivalent.*
+
+## Exercise 4. Loss curve gets stuck
+
+![[Pasted image 20251129135022.png]]
+**Figure 24.** Chaotic loss after a certain number of steps.
+
+Which **one** of the following statements is the most likely explanation for the erratic loss curve shown in Figure 24?
+
+The training set contains too many features.
+
+The regularization rate is too high.
+
+**The training set is not shuffled well.**
+*This is a possibility. For example, a training set that contains 100 images of dogs followed by 100 images of cats may cause loss to oscillate as the model trains. Ensure that you shuffle examples sufficiently.*
+
+1. ## Which of the following is an example of a stationary dataset?
+    
+     Rainfall rates in Seattle, Washington
+    
+     **Catalog of musical notes in Beethoven’s symphonies**
+    
+    check_circle_outline
+    
+    The set of musical notes used in Beethoven's symphonies is static and will not change over time.
+    
+     Most frequently used words in spam emails
+    
+     Daily ticket sales at a movie theater
+    
+2. ## You are preparing to train a model for predicting the sale price of used cars using a dataset that contains the following features: `year`, `model`, and `mileage`. When you examine the dataset, you discover that mileage values are missing for 150 out of 2,500 examples. Which of the following options would be reasonable actions to take? (Choose all that apply)
+    
+    Choose as many answers as you see fit.
+    
+     **Removing those 150 examples from the dataset**
+    
+    check_circle_outline
+    
+    It is reasonable to remove the examples that are missing mileage values.
+    
+     Removing the `mileage` column from the dataset, and training the model on just year and model
+    
+     Inserting a value of `0` into all the empty mileage fields
+    
+     **Inferring a `mileage` estimate for each empty field by multiplying the age of the car by the average yearly mileage for all cars in the dataset**
+    
+    check_circle_outline
+    
+    It is reasonable to impute these missing values with an estimate that can be logically derived from other data.
+    
+3. ## You are training a streaming service's movie-recommendation model to predict whether or not a user will enjoy a given movie. Which of the following would be reasonable proxy labels for "User enjoyed the movie"? (Choose all that apply)
+    
+    Choose as many answers as you see fit.
+    
+     User saved the movie to their “Want to Watch” list.
+    
+     User clicked "Start watching movie."
+    
+     **User recommended the movie to another user.**
+    
+    check_circle_outline
+    
+    **If a user recommends a movie, that's also likely a good signal that they enjoyed it.**
+    
+     **User gave the movie a 5-star rating.**
+    
+    check_circle_outline
+    
+    This is a reasonable proxy label, because a high rating typically correlates with user enjoyment.
+    
+4. ## True or False: Training your model until it achieves a low loss value on your test data is a good way to prevent overfitting.
+    
+     True
+    
+     **False**
+    
+    check_circle_outline
+    
+    Training your model multiple times until it performs well on the test data may actually cause overfitting, as good results on the test set will no longer demonstrate the model's ability to perform well on never-before-seen data.
+    
+5. ## Fill in the blank in the following sentence:  
+    Regularization improves your model's ability to generalize to new data by penalizing ___ during training.
+    
+     Incorrect predictions
+    
+     Learning rate
+    
+     **Complexity**
+    
+    check_circle_outline
+    
+    Regularization can improve a model's ability to generalize to new data by penalizing complexity, which encourages the model to fit the data as simply as possible.
+    
+     Gradient descent
+     

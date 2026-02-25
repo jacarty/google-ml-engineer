@@ -1,0 +1,173 @@
+# Automated Machine Learning (AutoML)
+
+**Learning objectives**
+
+- Automate tasks in a machine learning workflow.
+- Determine the benefits and limitations of using AutoML with your machine learning model.
+- Enumerate the common AutoML patterns and apply them to your ML projects.
+
+If you are starting a new machine learning (ML) project, you may be wondering if manual training is your only option to build a machine learning model. With manual training, you write code using an ML framework to create a model. During this process, you choose which algorithms to explore and iteratively tune hyperparameters to find the right model.
+
+Of course, model training is not the only thing you need to think about. In practice, building a machine learning model from prototype to production involves repetitive tasks and specialized skills. A simple exploratory ML workflow looks something like this:
+
+![Figure 1. A simple machine learning workflow.](https://developers.google.com/static/machine-learning/crash-course/automl/images/ml-workflow.png)
+
+**Figure 1.** Simple machine learning exploration workflow.
+
+**Repetitive tasks** - The ML workflow can involve repetitive work and experimentation. For example, during model development you typically need to explore different combinations of algorithms and hyperparameters to identify the most appropriate model. With manual training, you write specialized code to train the model and then adjust the code to run experiments with different ML algorithms and hyperparameters to find the best model. For small or exploratory projects this manual process may not be a problem, but for larger projects these repetitive tasks can be time consuming.
+
+**Specialized Skills** - Manually developing an ML model involves specialized skills. In practice, not every team planning to develop a machine learning model may have these skills. If a team does not have a dedicated data scientist, doing this work manually might not even be feasible.
+
+Luckily, certain steps in model development can be automated to reduce the burden of repetitive work and the need for specialized skills. Automating these tasks is the subject of this module on automated machine learning (AutoML).
+
+## What is AutoML?
+
+[**AutoML**](https://developers.google.com/machine-learning/glossary#automl) is a process of automating certain tasks in a machine learning workflow. You can think of AutoML as a set of tools and technologies that make building machine learning models faster and more accessible to a wider group of users. Though automation can help throughout the ML workflow, the tasks that are often associated with AutoML are the ones included in the model development cycle shown in Figure 1. These repetitive tasks include:
+
+- **Data Engineering**
+    - Feature engineering.
+    - Feature selection.
+- **Training**
+    - Identifying an appropriate ML algorithm.
+    - Selecting the best hyperparameters.
+- **Analysis**
+    - Evaluating metrics generated during training based on test and validation datasets.
+
+With AutoML, you can focus on your ML problem and data rather than on feature selection, tuning hyperparameters, and choosing the right algorithm.
+
+# AutoML: Benefits and limitations
+
+This section discusses some of the benefits and limitations of [**AutoML**](https://developers.google.com/machine-learning/glossary#automl) and can help you decide if AutoML is right for your project.
+
+## Benefits
+
+Some of the most common reasons you might choose to use AutoML include:
+
+- **To save time**: Many people choose AutoML to save time by avoiding extensive manual experimentation to find the best model.
+- **To improve quality of ML model**: AutoML tools can comprehensively search for the highest quality model.
+- **To build an ML model without needing specialized skills**: A side effect of automating ML tasks is that it democratizes ML. Users don't need to have a deep understanding of machine learning algorithms or programming to develop an ML model.
+- **To smoke test a dataset**: Even if you're an expert model builder, AutoML can quickly give you a baseline estimate for whether a dataset has enough signal in all of its noise. If the AutoML tool can't build even a mediocre model, it might not be worth spending your time trying to build a good model by hand.
+- **To evaluate a dataset**: Many AutoML systems help you evaluate not just the models they produce but also help evaluate the features that go into training those models. Even if you don't use the resulting model, AutoML tools may help you determine which of your features might not be worth gathering and including in your final dataset.
+- **To enforce best practices**: Automation includes built-in support to apply ML best practices to each model search
+
+## Limitations
+
+However, before choosing AutoML there are some limitations you should consider:
+
+- **Model quality may not be as good as manual training.** Using a generalized optimization algorithm to find the best combination of architecture, hyperparameters, and feature engineering for any random dataset often means that a motivated expert with enough time can create a model with better prediction quality.
+- **Model search and complexity can be opaque.** With AutoML, it is difficult to have insight into how the tool arrived at the best model. In fact, the output models themselves may be made from different architectures, hyperparameters, and feature engineering strategies. Models generated with AutoML are difficult to reproduce manually.
+- **Multiple AutoML runs may show more variance**: Because of how the optimization algorithm iteratively finds what it thinks are the best values for building the model, different AutoML runs may search different portions of the space and wind up in moderately (or even possibly significantly) different places. Retuning with AutoML to create a new model architecture may show more variance than simply retraining the previous output model architecture.
+- **Models can't be customized during training.** If your use case requires customization or tweaking during the training process, AutoML may not be the right choice for you.
+
+## Data requirements
+
+Whether you're using custom training or an AutoML system, one thing you can count on when you are building a model from scratch is that you need large amounts of data. The advantage with AutoML is that you can mostly ignore the architecture and hyperparameters search and focus primarily on the quality of your data.
+
+There are also specialized AutoML systems that can train models with significantly less data because they use [**transfer learning**](https://developers.google.com/machine-learning/glossary#transfer-learning). For example, instead of requiring hundreds of thousands of examples to build an image classification model, these specialized AutoML systems can use only a few hundred labeled images along with transfer learning from an existing image classification framework model.
+
+## Is AutoML right for your project?
+
+AutoML can help anyone—from novices to experts—use ML to build products and solve problems. If you are trying to decide if AutoML is right for your project, consider these trade offs:
+
+- **AutoML** is a great choice for a team with limited experience building ML models or experienced teams that are looking for productivity gains and don't have customization requirements.
+- **Custom (manual) training** is more appropriate when model quality is important and the team needs to be able to customize their model. In these cases, manual training may require more time for experimentation and building a solution, but the team can often achieve a higher quality model than with an AutoML solution.
+
+# AutoML: Getting started
+
+If you are thinking about using AutoML, you may have questions about how it works and what steps you should take to get started. This section dives deeper into common AutoML patterns, explores how AutoML works, and examines what steps you may need to take before you begin using AutoML for your project.
+
+## AutoML tools
+
+AutoML tools fall into two main categories:
+
+- **Tools that require no coding** typically take the form of web applications that let you configure and run experiments through a user interface to find the best model for your data without writing any code.
+- **API and CLI tools** provide advanced automation features, but require more (sometimes significantly more) programming and ML expertise.
+
+AutoML tools that require coding can be more powerful and more flexible than no-code tools, but they can also be more difficult to use. This module focuses on the no-code options for model development, but be aware that API and CLI options can help if you require customized automation.
+
+## AutoML workflow
+
+Let's walk through a typical ML workflow and see how things work when you use AutoML. The high level steps in the workflow are the same as those you use for custom training; the main difference is that AutoML handles some tasks for you.
+
+### Problem definition
+
+The first step in any ML workflow is to define your problem. When you are using AutoML, ensure that the tool you choose can support the objectives of your ML project. Most AutoML tools support a variety of supervised machine learning algorithms and input data types.
+
+For more information about problem framing, take a look at the module on [Introduction to Machine Learning Problem Framing](https://developers.google.com/machine-learning/problem-framing).
+
+### Data gathering
+
+Before you can start working with an AutoML tool, you need to collect your data into a single data source. Check the product documentation to make sure that your tool supports: your data source, the data types in your dataset, the size of your dataset.
+
+### Data preparation
+
+Data preparation is an area where AutoML tools can help you, but no tool can do everything automatically, so expect to do some work before you can import your data into the tool. Data preparation for AutoML is similar to what you would need to do to train a model manually. If you need to know more about how to prepare your data for training, take a look at the Data Preparation section.
+
+For more information on preparing your data, see the [working with numerical data](https://developers.google.com/machine-learning/crash-course/numerical-data) and [working with categorical data](https://developers.google.com/machine-learning/crash-course/categorical-data) modules.
+
+**Before importing your data** for AutoML training, you need to complete these steps:
+
+- **Label your data**
+    
+    Every example in your dataset needs a label.
+    
+- **Clean and format data**
+    
+    Real-world data tends to be messy, so expect to clean your data before using it. Even with AutoML you need to determine the best treatments for your particular dataset and problem. This might require some exploration and potentially multiple AutoML runs before you get the best results.
+    
+- **Perform feature transformations**
+    
+    Some AutoML tools handle certain feature transformations for you. But, if the tool you are using does not support a feature transform that you need or does not support it well, you may need to perform the transformations ahead of time.
+    
+
+### Model development (with a no-code AutoML)
+
+AutoML does the work for you during training. However, before you start training, you need to configure your experiment. To set up an AutoML training run, you typically need to specify these high level steps:
+
+1. **Import your data**
+    
+    To import your data, specify your data source. During the import process, the AutoML tool assigns a semantic data type to each data value.
+    
+2. **Analyze your data**
+    
+    AutoML products usually provide tools to analyze your dataset before and after training. As a best practice, you may want to use these analysis tools to understand and verify your data before starting an AutoML run.
+    
+3. **Refine your data**
+    
+    AutoML tools often provide mechanisms to help you refine your data after importing and before training. Here are a few tasks you may want to complete to refine your data:
+    
+    - **Semantic Checking:** During import, AutoML tools try to determine the correct semantic type for each feature, but these are only guesses. You should check the types designated to all features and change them if they were assigned incorrectly.
+        
+        For example, you may have postal codes stored as numbers in a column in your database. Most AutoML systems would detect the data as continuous numeric data. This would be incorrect for a postal code and the user would probably want to change the semantic type to categorical rather than continuous for this feature column.
+        
+    - **Transformations:** Some tools allow users to customize data transformations as part of the refinement process. Sometimes this is needed when a dataset has potentially predictive features that need to be transformed or combined in a way that is difficult for AutoML tools to determine without help.
+        
+        For example, consider a housing dataset that you are using to predict the sale price for a house. Suppose there is feature that represents the description for a house listing called `description` and you would like to use this data to create a new feature called `description_length`. Some AutoML systems offer ways to use custom transformations. For this example, there might be a `LENGTH` function to generate a new description length feature like this: `LENGTH(description)`.
+        
+4. **Configure AutoML run parameters**
+    
+    The last step before running your training experiment is to choose a few configuration settings to tell the tool how you want it to train your model. Though each AutoML tool has its own unique set of configuration options, here are a few of the significant configuration tasks you may need to complete:
+    
+    - Select the ML problem type you plan to solve. For example, are you solving a classification or regression problem?
+    - Select which column in your dataset is the label.
+    - Select the set of features to use to train the model.
+    - Select the set of ML algorithms AutoML considers in the model search.
+    - Select the evaluation metric AutoML uses to choose the best model.
+
+After configuring your AutoML experiment, you are ready to start the training run. Training may take a while to complete (on the order of hours).
+
+### Evaluate model
+
+After training, you can examine the results by using the tools your AutoML product provides to help you:
+
+- Evaluate your features by examining feature importance metrics.
+- Understand your model by examining the architecture and hyperparameters used to build it.
+- Evaluate top-level model performance with plots and metrics collected during training for the output model.
+
+### Productionization
+
+Though it is outside the scope of this module, some AutoML systems can help you test and deploy your model.
+
+### Retrain model
+
+You might need to retrain the model with new data. This might happen after you evaluate your AutoML training run or after your model is in production for some time. Either way, AutoML systems can help with retraining too. It is not uncommon to take another look at your data after an AutoML run, and retrain with an improved dataset.

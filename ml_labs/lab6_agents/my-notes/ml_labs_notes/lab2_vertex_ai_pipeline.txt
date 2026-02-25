@@ -1,0 +1,821 @@
+# Lab 2: Complete Vertex AI ML Pipeline
+
+**Completion Date:** February 15, 2026  
+**Total Duration:** ~6 hours (including AutoML wait time)  
+**Total Cost:** ~$12-17
+
+## Overview
+
+This lab covers the complete ML lifecycle on Google Cloud Platform:
+1. **Data Preparation** - Export from BigQuery to Cloud Storage
+2. **AutoML Training** - Automated model training and tuning
+3. **Custom Training** - Build and containerize custom training code
+4. **Deployment** - Deploy model to production endpoint
+
+## Learning Objectives
+
+✅ Understand the full ML pipeline from data to deployment  
+✅ Compare AutoML vs Custom Training approaches  
+✅ Learn Docker containerization for ML  
+✅ Deploy models to production endpoints  
+✅ Make predictions against live models
+
+## Performance Results
+
+| Approach | Accuracy | ROC AUC | Duration | Cost |
+|----------|----------|---------|----------|------|
+| Lab 1: BigQuery ML | 86.23% | 0.907 | 5 min | ~$2 |
+| **AutoML** | **86.8%** | **0.95** | 2+ hrs | $10-15 |
+| **Custom (Local)** | **86.24%** | **0.9188** | 1 min | $0 |
+| **Custom (Vertex AI)** | **87.10%** | **0.9305** | 12 min | $0.04 |
+
+**Key Insight:** Custom training achieved better accuracy than AutoML at 0.27% of the cost!
+
+---
+
+# Part 1: Data Preparation
+
+## Understanding the Data Flow
+
+```
+BigQuery (Data Warehouse)
+  ↓ Query & Export
+Cloud Storage (Data Lake)
+  ↓ Create Dataset
+Vertex AI (ML Platform)
+  ↓ Training
+Trained Models
+  ↓ Deploy
+Prediction Endpoints
+```
+
+## Key Concepts
+
+### Why Export from BigQuery?
+- **AutoML can read BigQuery directly**, but we exported because:
+  - Custom training needs files in GCS
+  - Creates reproducible data snapshot
+  - Faster for repeated reads
+
+### CSV vs Parquet
+- **CSV**: Human-readable, universal, but no schema preservation
+- **Parquet**: Columnar, compressed, preserves types, faster for ML
+- **Discovery**: BigQuery defaults to CSV even with `.parquet` extension!
+
+### Vertex AI Datasets
+- **NOT a copy of data** - just metadata wrapper
+- Points to GCS files
+- Tracks schema, splits, lineage
+
+
+```python
+# Install required libraries
+!pip install google-cloud-bigquery google-cloud-storage google-cloud-aiplatform pandas scikit-learn joblib gcsfs --quiet
+```
+
+
+```python
+# Setup and configuration
+import os
+from google.cloud import bigquery
+from google.cloud import storage
+from google.cloud import aiplatform
+from datetime import datetime
+
+# Project configuration
+PROJECT_ID = "carty-470812"
+REGION = "us-central1"
+BUCKET_NAME = f"{PROJECT_ID}-ml-census-data"
+BUCKET_URI = f"gs://{BUCKET_NAME}"
+
+print(f"Project: {PROJECT_ID}")
+print(f"Region: {REGION}")
+print(f"Bucket: {BUCKET_URI}")
+```
+
+## Step 1.1: Create Cloud Storage Bucket
+
+
+```python
+# Create GCS bucket for data storage
+storage_client = storage.Client(project=PROJECT_ID)
+
+try:
+    bucket = storage_client.create_bucket(BUCKET_NAME, location=REGION)
+    print(f"✅ Created bucket: {BUCKET_NAME}")
+except Exception as e:
+    if "409" in str(e):  # Bucket already exists
+        print(f"ℹ️  Bucket {BUCKET_NAME} already exists")
+        bucket = storage_client.bucket(BUCKET_NAME)
+    else:
+        raise e
+```
+
+## Step 1.2: Export Data from BigQuery
+
+
+```python
+# Initialize BigQuery client
+bq_client = bigquery.Client(project=PROJECT_ID)
+
+# Source: Census Adult Income dataset (same as Lab 1)
+SOURCE_TABLE = "bigquery-public-data.ml_datasets.census_adult_income"
+
+# Destinations
+EXPORT_PATH_CSV = f"{BUCKET_URI}/data/census_income.csv"
+EXPORT_PATH_PARQUET = f"{BUCKET_URI}/data/census_income.parquet"
+
+print(f"📊 Exporting from: {SOURCE_TABLE}")
+print(f"📦 Destination (CSV): {EXPORT_PATH_CSV}")
+print(f"📦 Destination (Parquet): {EXPORT_PATH_PARQUET}")
+```
+
+
+```python
+# Export to CSV (primary format)
+print("⏳ Exporting to CSV...")
+extract_job_csv = bq_client.extract_table(
+    SOURCE_TABLE,
+    EXPORT_PATH_CSV,
+    location="US",
+)
+extract_job_csv.result()  # Wait for completion
+print("✅ CSV export complete!")
+
+# Export to "Parquet" (actually CSV - lesson learned!)
+print("⏳ Exporting to Parquet...")
+extract_job_parquet = bq_client.extract_table(
+    SOURCE_TABLE,
+    EXPORT_PATH_PARQUET,
+    location="US",
+)
+extract_job_parquet.result()
+print("✅ Parquet export complete!")
+print("⚠️  Note: BigQuery defaulted to CSV format despite .parquet extension")
+```
+
+
+```python
+# Verify exports
+blobs = list(storage_client.list_blobs(BUCKET_NAME, prefix="data/"))
+print(f"\n📁 Files in {BUCKET_URI}/data/:")
+for blob in blobs:
+    size_mb = blob.size / (1024 * 1024)
+    print(f"  - {blob.name} ({size_mb:.2f} MB)")
+```
+
+## Step 1.3: Create Vertex AI Dataset
+
+
+```python
+# Initialize Vertex AI
+aiplatform.init(project=PROJECT_ID, location=REGION)
+
+# Create Tabular Dataset (points to CSV in GCS)
+dataset = aiplatform.TabularDataset.create(
+    display_name="census-income-dataset",
+    gcs_source=EXPORT_PATH_CSV,
+)
+
+print(f"✅ Dataset created!")
+print(f"   Resource name: {dataset.resource_name}")
+print(f"   Display name: {dataset.display_name}")
+```
+
+
+```python
+# Get dataset statistics
+query = f"""
+SELECT 
+  COUNT(*) as total_rows,
+  COUNTIF(income_bracket = '>50K') as high_income,
+  COUNTIF(income_bracket = '<=50K') as low_income,
+  ROUND(COUNTIF(income_bracket = '>50K') / COUNT(*) * 100, 2) as high_income_pct
+FROM `{SOURCE_TABLE}`
+"""
+
+stats_df = bq_client.query(query).to_dataframe()
+
+print("\n📊 Dataset Statistics:")
+print(f"   Total rows: {stats_df['total_rows'].values[0]:,}")
+print(f"   High income (>50K): {stats_df['high_income'].values[0]:,} ({stats_df['high_income_pct'].values[0]}%)")
+print(f"   Low income (<=50K): {stats_df['low_income'].values[0]:,}")
+print(f"\n⚠️  Class imbalance: 24% high income, 76% low income")
+```
+
+## Part 1 Summary
+
+**Completed:**
+- ✅ Created GCS bucket: `carty-470812-ml-census-data`
+- ✅ Exported 32,561 rows from BigQuery
+- ✅ Created Vertex AI managed dataset
+- ✅ Verified data integrity
+
+**Cost:** < $0.01  
+**Duration:** ~30 minutes
+
+---
+
+# Part 2: AutoML Training
+
+## What is AutoML?
+
+**AutoML automatically:**
+- Tries multiple algorithms
+- Engineers features (creates interactions)
+- Tunes hyperparameters
+- Selects the best model
+
+**Tradeoffs:**
+- ✅ **Pros:** No ML expertise needed, often good results, fast to set up
+- ❌ **Cons:** Expensive ($20/hour), less control, "black box"
+
+## Configuration Decisions
+
+### Optimization Objective: `maximize-au-prc`
+**Why PR AUC instead of ROC AUC?**
+- Better for imbalanced datasets (24% vs 76% split)
+- Focuses on precision-recall tradeoff
+- More informative for minority class performance
+
+### Budget: 1 hour (~$10-15)
+- Actual runtime: 2 hours 14 minutes
+- Early stopping kicked in around 1 hour
+- Performance plateaued at PR AUC = 0.952
+
+
+```python
+# AutoML Configuration
+AUTOML_DISPLAY_NAME = "census-automl-model"
+TARGET_COLUMN = "income_bracket"
+BUDGET_HOURS = 1
+
+print("🤖 AutoML Training Configuration")
+print("=" * 60)
+print(f"Model name: {AUTOML_DISPLAY_NAME}")
+print(f"Target column: {TARGET_COLUMN}")
+print(f"Training budget: {BUDGET_HOURS} hour(s)")
+print(f"Optimization: Maximize PR AUC (good for imbalanced data)")
+print(f"Estimated cost: $10-15")
+print(f"Estimated time: 1-2 hours")
+print("=" * 60)
+```
+
+
+```python
+# Create AutoML training job
+from datetime import datetime
+import json
+
+start_time = datetime.now()
+print(f"🚀 Starting AutoML training at {start_time.strftime('%I:%M %p')}")
+
+automl_job = aiplatform.AutoMLTabularTrainingJob(
+    display_name=AUTOML_DISPLAY_NAME,
+    optimization_prediction_type="classification",
+    optimization_objective="maximize-au-prc",
+)
+
+# Run training (async mode - returns immediately)
+model = automl_job.run(
+    dataset=dataset,
+    target_column=TARGET_COLUMN,
+    budget_milli_node_hours=1000,  # 1 hour
+    model_display_name=AUTOML_DISPLAY_NAME,
+    training_fraction_split=0.8,
+    validation_fraction_split=0.1,
+    test_fraction_split=0.1,
+    sync=False,  # Don't block - run in background
+)
+
+# Save job info for later retrieval
+import time
+time.sleep(10)  # Wait for job to register
+
+job_resource_name = automl_job.resource_name
+
+config = {
+    "job_resource_name": job_resource_name,
+    "dataset_resource_name": dataset.resource_name,
+    "project_id": PROJECT_ID,
+    "region": REGION,
+    "started_at": start_time.isoformat()
+}
+
+with open("automl_job_config.json", "w") as f:
+    json.dump(config, f, indent=2)
+
+print(f"\n✅ Training job submitted!")
+print(f"   Job resource: {job_resource_name}")
+print(f"\n📊 Monitor at:")
+print(f"   https://console.cloud.google.com/vertex-ai/training/training-pipelines?project={PROJECT_ID}")
+print(f"\n💡 You can close this notebook - job runs on Google's servers")
+```
+
+### Resume After AutoML Completes (~1-2 hours later)
+
+
+```python
+# Retrieve completed AutoML job
+import json
+
+# Load saved config
+with open("automl_job_config.json", "r") as f:
+    config = json.load(f)
+
+# Reconnect to job
+automl_job = aiplatform.AutoMLTabularTrainingJob.get(config["job_resource_name"])
+
+print(f"🔍 Job Status: {automl_job.state}")
+
+if automl_job.state == "PIPELINE_STATE_SUCCEEDED":
+    print("✅ Training completed successfully!")
+    
+    # Get the trained model
+    model = automl_job.get_model()
+    print(f"\n🎯 Model: {model.display_name}")
+    print(f"   Resource: {model.resource_name}")
+else:
+    print(f"⏳ Training still in progress or failed: {automl_job.state}")
+```
+
+
+```python
+# Get evaluation metrics
+# Note: Metrics are visible in console, but programmatic access varies by API version
+
+print("📊 AutoML Performance Results")
+print("=" * 60)
+print("Metrics from GCP Console:")
+print("   PR AUC: 0.952")
+print("   ROC AUC: 0.95")
+print("   Micro-average Precision: 86.8%")
+print("   Micro-average Recall: 86.8%")
+print("   Micro-average F1: 0.8675")
+print("\nClass-specific performance:")
+print("   >50K (high income): PR AUC = 0.838")
+print("   <=50K (low income): PR AUC = 0.974")
+print("\n✅ Final Accuracy: ~86.8%")
+print("=" * 60)
+```
+
+## Part 2 Summary
+
+**Completed:**
+- ✅ Trained AutoML model
+- ✅ Achieved 86.8% accuracy (0.45% improvement over Lab 1)
+- ✅ PR AUC: 0.952 (excellent for imbalanced data)
+
+**Cost:** ~$10-15  
+**Duration:** 2 hours 14 minutes  
+**Actual budget used:** ~1 hour (early stopping)
+
+**Key Learning:** AutoML found slightly better performance than manual boosted tree, but at significant cost.
+
+---
+
+# Part 3: Custom Training
+
+## Why Custom Training?
+
+**Advantages over AutoML:**
+- Full control over algorithm and hyperparameters
+- Much cheaper (~$0.04 vs $10-15)
+- Faster iteration (12 min vs 2+ hours)
+- Production-ready pattern (containerization)
+- Can use any framework or custom logic
+
+## The Approach
+
+We'll build custom training in 3 stages:
+1. **Local training** - Test the training script locally
+2. **Containerization** - Package in Docker
+3. **Vertex AI training** - Run on cloud infrastructure
+
+## Part 3A: Local Custom Training
+
+
+```python
+# Download data locally for testing
+from google.cloud import storage
+
+storage_client = storage.Client(project=PROJECT_ID)
+bucket = storage_client.bucket(BUCKET_NAME)
+blob = bucket.blob("data/census_income.csv")
+
+local_data_path = "census_income.csv"
+blob.download_to_filename(local_data_path)
+
+print(f"✅ Downloaded data to: {local_data_path}")
+```
+
+
+```python
+# Train model locally (quick test)
+import pandas as pd
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, roc_auc_score, classification_report
+import joblib
+import os
+
+print("="*60)
+print("LOCAL CUSTOM TRAINING")
+print("="*60)
+
+# Load data
+print("\n📂 Loading data...")
+df = pd.read_csv(local_data_path)
+print(f"✅ Loaded {len(df):,} rows")
+
+# Preprocess
+print("\n🔧 Preprocessing...")
+X = df.drop(columns=['income_bracket'])
+y = (df['income_bracket'].str.strip() == '>50K').astype(int)
+X = pd.get_dummies(X, drop_first=True)
+
+print(f"✅ Features: {X.shape[1]} columns")
+print(f"✅ Target distribution: {y.value_counts().to_dict()}")
+
+# Split
+print("\n✂️  Splitting data (80/20)...")
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+# Train
+print("\n🚀 Training model...")
+print("   Algorithm: Gradient Boosting (same as Lab 1)")
+print("   n_estimators: 50")
+print("   max_depth: 3")
+print("   learning_rate: 0.1")
+
+model = GradientBoostingClassifier(
+    n_estimators=50,
+    max_depth=3,
+    learning_rate=0.1,
+    random_state=42
+)
+model.fit(X_train, y_train)
+print("✅ Training complete!")
+
+# Evaluate
+print("\n📊 Evaluating...")
+y_pred = model.predict(X_test)
+y_pred_proba = model.predict_proba(X_test)[:, 1]
+
+accuracy = accuracy_score(y_test, y_pred)
+roc_auc = roc_auc_score(y_test, y_pred_proba)
+
+print(f"\n📈 Performance:")
+print(f"   Accuracy: {accuracy:.4f} ({accuracy*100:.2f}%)")
+print(f"   ROC AUC: {roc_auc:.4f}")
+
+print(f"\n📋 Classification Report:")
+print(classification_report(y_test, y_pred, target_names=['<=50K', '>50K']))
+
+# Save model
+os.makedirs("/tmp/model", exist_ok=True)
+joblib.dump(model, "/tmp/model/model.joblib", protocol=4)  # Protocol 4 for compatibility
+print("\n💾 Model saved to /tmp/model/model.joblib")
+
+print("\n" + "="*60)
+print(f"✅ LOCAL TRAINING COMPLETE: {accuracy*100:.2f}% accuracy")
+print("="*60)
+```
+
+### Upload Local Model to GCS
+
+**Important:** We need to save with `protocol=4` for compatibility with Vertex AI serving containers (Python 3.10).
+
+
+```python
+# Upload local model to GCS
+from datetime import datetime
+
+timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
+gcs_model_path = f"models/local-upload-{timestamp}/model.joblib"
+
+storage_client = storage.Client(project=PROJECT_ID)
+bucket = storage_client.bucket(BUCKET_NAME)
+blob = bucket.blob(gcs_model_path)
+
+blob.upload_from_filename("/tmp/model/model.joblib")
+
+MODEL_DIR_LOCAL = f"gs://{BUCKET_NAME}/models/local-upload-{timestamp}"
+
+print(f"✅ Model uploaded to: {MODEL_DIR_LOCAL}")
+print(f"\nSave this for deployment:")
+print(f"MODEL_DIR = '{MODEL_DIR_LOCAL}'")
+```
+
+## Part 3B: Containerized Training on Vertex AI
+
+### The Production ML Pattern
+
+```
+Training Script (Python)
+    ↓
+Docker Container
+    ↓
+Google Container Registry
+    ↓
+Vertex AI Custom Training Job
+    ↓
+Trained Model in GCS
+```
+
+### Files Created
+
+1. **`lab2_vertex_train.py`** - Training script with:
+   - Data loading from GCS
+   - Preprocessing (one-hot encoding)
+   - Model training (gradient boosting)
+   - Model saving to GCS
+
+2. **`requirements.txt`** - Dependencies:
+   ```
+   pandas==2.3.3
+   scikit-learn==1.6.1
+   joblib==1.4.2
+   gcsfs==2026.2.0
+   pyarrow==23.0.0
+   google-cloud-storage==3.9.0
+   ```
+
+3. **`Dockerfile`** - Container definition:
+   ```dockerfile
+   FROM python:3.10-slim
+   WORKDIR /app
+   COPY requirements.txt .
+   RUN pip install --no-cache-dir -r requirements.txt
+   COPY lab2_train.py train.py
+   ENTRYPOINT ["python", "train.py"]
+   ```
+
+### Key Learning: Pickle Protocol Compatibility
+
+**Problem:** Python 3.13 uses pickle protocol 5, but Vertex AI containers use Python 3.10 (protocol 4).
+
+**Solution:** Always save with `protocol=4`:
+```python
+joblib.dump(model, path, protocol=4)
+```
+
+
+```python
+# Build container using Cloud Build
+# NOTE: This assumes you have lab2_train.py, Dockerfile, requirements.txt in ./ml_labs/
+
+IMAGE_NAME = "census-custom-training"
+IMAGE_TAG = "v2"  # v2 includes pickle protocol fix
+IMAGE_URI = f"gcr.io/{PROJECT_ID}/{IMAGE_NAME}:{IMAGE_TAG}"
+
+print(f"🔨 Building container: {IMAGE_URI}")
+print("   This takes ~2-3 minutes...")
+
+# Enable required APIs
+!gcloud services enable cloudbuild.googleapis.com --project={PROJECT_ID}
+!gcloud services enable containerregistry.googleapis.com --project={PROJECT_ID}
+
+# Build and push container
+!gcloud builds submit \
+    --tag {IMAGE_URI} \
+    --project {PROJECT_ID} \
+    --timeout=20m \
+    ./ml_labs
+
+print(f"\n✅ Container built and pushed: {IMAGE_URI}")
+```
+
+
+```python
+# Submit custom training job to Vertex AI
+from datetime import datetime
+
+# Initialize Vertex AI with staging bucket
+aiplatform.init(
+    project=PROJECT_ID,
+    location=REGION,
+    staging_bucket=f"gs://{BUCKET_NAME}"
+)
+
+# Job configuration
+timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
+JOB_NAME = f"census-custom-{timestamp}"
+GCS_DATA_PATH = f"gs://{BUCKET_NAME}/data/census_income.csv"
+GCS_MODEL_DIR = f"gs://{BUCKET_NAME}/models/custom-{timestamp}"
+
+print("="*60)
+print("VERTEX AI CUSTOM TRAINING JOB")
+print("="*60)
+print(f"Job name: {JOB_NAME}")
+print(f"Container: {IMAGE_URI}")
+print(f"Data: {GCS_DATA_PATH}")
+print(f"Model output: {GCS_MODEL_DIR}")
+print(f"Machine: n1-standard-4 (4 vCPUs, 15 GB RAM)")
+print(f"Estimated cost: ~$0.04")
+print(f"Estimated time: ~12 minutes")
+print("="*60)
+
+# Create custom training job
+custom_job = aiplatform.CustomContainerTrainingJob(
+    display_name=JOB_NAME,
+    container_uri=IMAGE_URI,
+)
+
+# Submit job
+print(f"\n🚀 Submitting job...")
+model = custom_job.run(
+    args=[
+        f"--data-path={GCS_DATA_PATH}",
+        "--target-column=income_bracket",
+        f"--model-dir={GCS_MODEL_DIR}",
+        "--n-estimators=100",  # More estimators than local
+        "--max-depth=5",        # Deeper trees
+        "--learning-rate=0.1",
+    ],
+    replica_count=1,
+    machine_type="n1-standard-4",
+    sync=True,  # Wait for completion
+)
+
+print(f"\n✅ Training complete!")
+print(f"💾 Model saved to: {GCS_MODEL_DIR}")
+```
+
+### Check Training Logs
+
+View logs at: https://console.cloud.google.com/vertex-ai/training/custom-jobs
+
+**Results from Vertex AI logs:**
+```
+Final Accuracy: 87.10%
+Final ROC AUC: 0.9305
+```
+
+**This beat both AutoML (86.8%) and local training (86.24%)!**
+
+## Part 3 Summary
+
+**Completed:**
+- ✅ Trained model locally (86.24% accuracy)
+- ✅ Containerized training code
+- ✅ Ran on Vertex AI infrastructure (87.10% accuracy)
+
+**Performance Comparison:**
+- Local (n_estimators=50): 86.24%
+- Vertex AI (n_estimators=100): 87.10%
+- Improvement from better hyperparameters!
+
+**Cost:** ~$0.04 (vs AutoML's $10-15)  
+**Duration:** 12 minutes (vs AutoML's 2+ hours)
+
+**Key Insight:** Custom training beat AutoML at 0.27% of the cost and 10x faster!
+
+---
+
+# Lab 2 Complete Summary
+
+## Final Performance Comparison
+
+| Approach | Accuracy | ROC AUC | Duration | Cost | When to Use |
+|----------|----------|---------|----------|------|-------------|
+| **BigQuery ML** | 86.23% | 0.907 | 5 min | $2 | SQL users, quick experiments |
+| **AutoML** | 86.8% | 0.95 | 2+ hrs | $10-15 | No ML expertise, exploratory |
+| **Custom Local** | 86.24% | 0.9188 | 1 min | $0 | Development, testing |
+| **Custom Vertex AI** | **87.10%** | **0.9305** | 12 min | **$0.04** | **Production deployment** |
+
+## Total Lab Cost Breakdown
+
+| Component | Cost |
+|-----------|------|
+| Part 1: Data Prep | < $0.01 |
+| Part 2: AutoML | $10-15 |
+| Part 3: Custom Training | $0.04 |
+| GCS Storage (ongoing) | ~$0.10/month |
+| **Total Lab Cost** | **~$12-17** |
+
+## Key Insights
+
+### 1. Custom Training Wins on Cost-Performance
+- **87.10% accuracy** (best result)
+- **$0.04 cost** (250x cheaper than AutoML)
+- **12 minutes** (10x faster than AutoML)
+
+### 2. Algorithm Selection Matters Most
+- All approaches converged on gradient boosting
+- Feature engineering had minimal impact
+- Hyperparameter tuning (n_estimators: 50→100) improved accuracy
+
+### 3. Production ML Engineering Patterns
+- ✅ Containerization enables reproducibility
+- ✅ Vertex AI provides enterprise-scale infrastructure
+- ✅ Model registry enables versioning and lineage
+- ✅ Endpoints enable real-time serving
+
+### 4. Technical Gotchas Learned
+- BigQuery export defaults to CSV (not format from filename)
+- Pickle protocol compatibility matters (use protocol=4)
+- Feature encoding must match exactly for predictions
+- Deployed endpoints cost money even with zero traffic
+
+## Skills Acquired
+
+### Technical Skills
+✅ BigQuery data export  
+✅ Cloud Storage operations  
+✅ Vertex AI SDK usage  
+✅ AutoML configuration and tuning  
+✅ Python training script development  
+✅ Docker containerization  
+✅ Google Cloud Build  
+✅ Custom training jobs on Vertex AI  
+✅ Model registry management  
+✅ Endpoint deployment and serving  
+✅ Real-time and batch predictions
+
+### ML Engineering Skills
+✅ Data pipeline design  
+✅ Model performance evaluation  
+✅ Cost-performance tradeoff analysis  
+✅ Production deployment patterns  
+✅ Version compatibility management  
+✅ Resource cleanup and cost control
+
+## Files Created
+
+```
+google-ml-engineer/
+└── ml_labs/lab2/
+    ├── automl_job_config.json              (AutoML job metadata)
+    ├── census_income.csv                       (local data copy)
+    ├── Dockerfile                          (container definition)
+    ├── lab2_train.py                       (training script)
+    ├── lab2_vertex_ai_pipeline.py            (Vertex AI pipeline)
+    └── requirements.txt                    (dependencies)
+```
+
+## GCS Resources
+
+```
+gs://carty-470812-ml-census-data/
+├── data/
+│   ├── census_income.csv                   (3.64 MB)
+│   └── census_income.parquet               (actually CSV)
+└── models/
+    ├── local-upload-TIMESTAMP/             (local trained model)
+    ├── custom-TIMESTAMP/                   (Vertex AI trained model)
+    └── compatible-TIMESTAMP/               (protocol-4 compatible)
+```
+
+## Next Steps
+
+### Immediate
+1. **Clean up resources** to avoid charges:
+   ```python
+   # Undeploy endpoints
+   # Delete models
+   # Optionally delete GCS data
+   ```
+
+2. **Document learnings** in your own words
+
+3. **Commit code to GitHub** for portfolio
+
+### Lab 3: Hyperparameter Tuning (Week 4)
+- Systematic hyperparameter optimization
+- Vertex AI Hyperparameter Tuning service
+- Bayesian optimization
+- Target: 87.5-88% accuracy
+
+### Lab 4: Model Monitoring (Week 5)
+- Data drift detection
+- Model performance degradation
+- Alerting and retraining triggers
+- Production ML ops patterns
+
+### Theory Reinforcement (Weeks 6-8)
+Now that you've DONE the work, theory will make more sense:
+- Feature engineering deep dive
+- Algorithm fundamentals
+- Model evaluation metrics
+
+---
+
+## Congratulations! 🎉
+
+You've completed a comprehensive ML pipeline from data preparation through production deployment. You now understand:
+
+✅ How enterprise ML systems are built  
+✅ Cost-performance tradeoffs in cloud ML  
+✅ Production deployment patterns  
+✅ When to use AutoML vs custom training
+
+**This is real ML engineering work!**
+
+---
+
+*Lab 2 completed: February 15, 2026*  
+*Total time investment: ~6 hours*  
+*Knowledge gained: Invaluable* 🚀

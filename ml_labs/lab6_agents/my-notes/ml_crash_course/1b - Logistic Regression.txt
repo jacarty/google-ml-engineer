@@ -1,0 +1,232 @@
+In the [Linear regression module](https://developers.google.com/machine-learning/crash-course/linear-regression), you explored how to construct a model to make continuous numerical predictions, such as the fuel efficiency of a car. But what if you want to build a model to answer questions like "Will it rain today?" or "Is this email spam?"
+
+This module introduces a new type of regression model called [**logistic regression**](https://developers.google.com/machine-learning/glossary#logistic_regression) that is designed to predict the probability of a given outcome.
+
+How do you find a probability?
+Exponential or Hyperbolid
+One way is to combine to make Sigmoid curve (one of the family of S curves called Logistic functions)
+
+![[Pasted image 20251124174837.png]]![[Pasted image 20251124174848.png]]![[Pasted image 20251124174906.png]]
+![[Pasted image 20251124175104.png]]
+![[Pasted image 20251124175123.png]]
+
+# Logistic regression: Calculating a probability with the sigmoid function
+
+## AI-generated Key Takeaways
+
+Many problems require a probability estimate as output. [**Logistic regression**](https://developers.google.com/machine-learning/glossary#logistic_regression) is an extremely efficient mechanism for calculating probabilities. Practically speaking, you can use the returned probability in either of the following two ways:
+
+- Applied "as is." For example, if a spam-prediction model takes an email as input and outputs a value of `0.932`, this implies a `93.2%` probability that the email is spam.
+    
+- Converted to a [**binary category**](https://developers.google.com/machine-learning/glossary#binary-classification) such as `True` or `False`, `Spam` or `Not Spam`.
+    
+This module focuses on using logistic regression model output as-is. In the [Classification module](https://developers.google.com/machine-learning/crash-course/classification/index.md), you'll learn how to convert this output into a binary category.
+
+## Sigmoid function
+
+You might be wondering how a logistic regression model can ensure its output represents a probability, always outputting a value between 0 and 1. As it happens, there's a family of functions called **logistic functions** whose output has those same characteristics. The standard logistic function, also known as the [**sigmoid function**](https://developers.google.com/machine-learning/glossary#sigmoid-function) (_sigmoid_ means "s-shaped"), has the formula:
+![[Pasted image 20251124175310.png]]
+where:
+
+- _f(x)_ is the output of the sigmoid function.
+- _e_ is [Euler's number](https://wikipedia.org/wiki/E_\(mathematical_constant\)): a mathematical constant ≈ 2.71828.
+- _x_ is the input to the sigmoid function.
+
+Figure 1 shows the corresponding graph of the sigmoid function.
+
+![Sigmoid (s-shaped) curve plotted on the Cartesian coordinate plane,
+centered at the origin.](https://developers.google.com/static/machine-learning/crash-course/logistic-regression/images/sigmoid_function_with_axes.png)
+
+**Figure 1.** Graph of the sigmoid function. The curve approaches 0 as _x_ values decrease to negative infinity, and 1 as _x_ values increase toward infinity.
+![[Pasted image 20251124175332.png]]
+As the input, `x`, increases, the output of the sigmoid function approaches but never reaches `1`. Similarly, as the input decreases, the sigmoid function's output approaches but never reaches `0.
+
+**Click here for a deeper dive into the math behind the sigmoid function**
+
+The table below shows the output values of the sigmoid function for input values in the range –7 to 7. Note how quickly the sigmoid approaches 0 for decreasing negative input values, and how quickly the sigmoid approaches 1 for increasing positive input values.
+
+However, no matter how large or how small the input value, the output will always be greater than 0 and less than 1.
+
+|Input|Sigmoid output|
+|---|---|
+|-7|0.001|
+|-6|0.002|
+|-5|0.007|
+|-4|0.018|
+|-3|0.047|
+|-2|0.119|
+|-1|0.269|
+|0|0.50|
+|1|0.731|
+|2|0.881|
+|3|0.952|
+|4|0.982|
+|5|0.993|
+|6|0.997|
+|7|0.999|
+### Transforming linear output using the sigmoid function
+
+The following equation represents the linear component of a logistic regression model:
+
+![[Pasted image 20251124175424.png]]
+
+where:
+
+- _z_ is the output of the linear equation, also called the [**log odds**](https://developers.google.com/machine-learning/glossary#log-odds).
+- _b_ is the bias.
+- The _w_ values are the model's learned weights.
+- The _x_ values are the feature values for a particular example.
+
+To obtain the logistic regression prediction, the _z_ value is then passed to the sigmoid function, yielding a value (a probability) between 0 and 1:
+![[Pasted image 20251124175435.png]]
+where:
+
+- _y'_ is the output of the logistic regression model.
+- _e_ is [Euler's number](https://wikipedia.org/wiki/E_\(mathematical_constant\)): a mathematical constant ≈ 2.71828.
+- _z_ is the linear output (as calculated in the preceding equation).
+
+**Click here to learn more about log-odds**
+![[Pasted image 20251124175457.png]]
+Figure 2 illustrates how linear output is transformed to logistic regression output using these calculations.
+
+![Left: Line with the points (-7.5, –10), (-2.5, 0), and (0, 5)
+highlighted. Right: Sigmoid curve with the corresponding transformed
+points (-10, 0.00004), (0, 0.5), and (5, 0.9933) highlighted.](https://developers.google.com/static/machine-learning/crash-course/logistic-regression/images/linear_to_logistic.png)
+
+**Figure 2.** Left: graph of the linear function z = 2x + 5, with three points highlighted. Right: Sigmoid curve with the same three points highlighted after being transformed by the sigmoid function.
+![[Pasted image 20251124175509.png]]
+In Figure 2, a linear equation becomes input to the sigmoid function, which bends the straight line into an s-shape. Notice that the linear equation can output very big or very small values of z, but the output of the sigmoid function, y', is always between 0 and 1, exclusive. For example, the yellow square on the left graph has a z value of –10, but the sigmoid function in the right graph maps that –10 into a y' value of 0.00004.
+
+## Exercise: Check your understanding
+
+![[Pasted image 20251124175532.png]]
+
+Answer the following two questions.
+
+1. What is the value of _z_ for these input values?
+
+Correct! The linear equation defined by the weights and bias is _z_ = 1 + 2x1 – x2 + 5 x3. Plugging the input values into the equation produces z = 1 + (2)(0) - (10) + (5)(2) = 1
+
+2. What is the logistic regression prediction for these input values?
+
+![[Pasted image 20251124180419.png]]
+
+# Logistic regression: Loss and regularization
+
+## AI-generated Key Takeaways
+
+[**Logistic regression**](https://developers.google.com/machine-learning/glossary#logistic_regression) models are trained using the same process as [**linear regression**](https://developers.google.com/machine-learning/crash-course/linear-regression) models, with two key distinctions:
+
+- Logistic regression models use [**Log Loss**](https://developers.google.com/machine-learning/glossary#Log_Loss) as the loss function instead of [**squared loss**](https://developers.google.com/machine-learning/glossary#l2-loss).
+- Applying [regularization](https://developers.google.com/machine-learning/crash-course/overfitting/regularization) is critical to prevent [**overfitting**](https://developers.google.com/machine-learning/glossary#overfitting).
+
+The following sections discuss these two considerations in more depth.
+
+## Log Loss
+
+![[Pasted image 20251124190417.png]]
+
+However, the rate of change of a logistic regression model is _not_ constant. As you saw in [Calculating a probability](https://developers.google.com/machine-learning/crash-course/logistic-regression/sigmoid-function), the [**sigmoid**](https://developers.google.com/machine-learning/glossary#sigmoid-function) curve is s-shaped rather than linear. When the log-odds (z) value is closer to 0, small increases in z result in much larger changes to y than when
+z is a large positive or negative number. The following table shows the sigmoid function's output for input values from 5 to 10, as well as the corresponding precision required to capture the differences in the results.
+
+|input|logistic output|required digits of precision|
+|---|---|---|
+|5|0.993|3|
+|6|0.997|3|
+|7|0.999|3|
+|8|0.9997|4|
+|9|0.9999|4|
+|10|0.99998|5|
+
+If you used squared loss to calculate errors for the sigmoid function, as the output got closer and closer to `0` and `1`, you would need more memory to preserve the precision needed to track these values.
+
+Instead, the loss function for logistic regression is [**Log Loss**](https://developers.google.com/machine-learning/glossary#Log_Loss). The Log Loss equation returns the logarithm of the magnitude of the change, rather than just the distance from data to prediction. Log Loss is calculated as follows:
+![[Pasted image 20251124190511.png]]
+where:
+
+N is the number of labeled examples in the dataset
+
+i is the index of an example in the dataset (e.g.,- is the third example in the dataset)
+
+y1 is the label for the th example. Since this is logistic regression,- must either be 0 or 1.
+
+y11 is your model's prediction for the th example (somewhere between 0 and 1), given the set of features in
+
+- .
+
+#### Click the icon to learn more about Log Loss.
+
+This form of the Log Loss function calculates the mean Log Loss across all points in the dataset. Using mean Log Loss (as opposed to total Log Loss) is desirable in practice, because it enables us to decouple tuning of the batch size and the learning rate.
+
+## Regularization in logistic regression
+
+[**Regularization**](https://developers.google.com/machine-learning/glossary#regularization), a mechanism for penalizing model complexity during training, is extremely important in logistic regression modeling. Without regularization, the asymptotic nature of logistic regression would keep driving loss towards 0 in cases where the model has a large number of features. Consequently, most logistic regression models use one of the following two strategies to decrease model complexity:
+
+- [L2 regularization](https://developers.google.com/machine-learning/crash-course/overfitting/regularization)
+- [Early stopping](https://developers.google.com/machine-learning/crash-course/overfitting/regularization#early_stopping_an_alternative_to_complexity-based_regularization): Limiting the number of training steps to halt training while loss is still decreasing.
+
+1. ## Why is a linear regression model's output a poor predictor of probability?
+    
+     It only has one weight per feature.
+    
+     It only has one output value.
+    
+     The bias parameter skews the output value.
+    
+     Its predictions are not restricted to values between 0 and 1.
+    
+    check_circle_outline
+    
+    Probabilities are represented using a range from 0 to 1, where a value of 0 indicates a 0% chance of an event occurring and a value of 1 indicates a 100% chance of an event occurring. Linear regression models don't restrict their output to a range from 0 to 1.
+    
+2. ## True or false: A sigmoid function never outputs the value 0 or the value 1.
+    
+     True
+    
+    check_circle_outline
+    
+    A sigmoid function always outputs a value between 0 and 1, but never the exact values 0 or 1.
+    
+     False
+    
+3. ## True or false: Applying regularization is less important when training logistic regression models than it is for training linear regression models.
+    
+     True
+    
+     False
+    
+    check_circle_outline
+    
+    Applying regularization is generally considered to be more important, not less important, when training logistic regression models vs. linear regression models.
+    
+4. ## Which of the following options matches both Linear Regression and Logistic Regression with appropriate loss functions for calculating loss?
+    
+     **Linear Regression:** Mean squared error  
+    **Logistic Regression:** Mean squared error
+    
+     **Linear Regression:** Mean squared error  
+    **Logistic Regression:** Mean absolute error
+    
+     **Linear Regression:** Mean squared error  
+    **Logistic Regression:** Log Loss
+    
+    check_circle_outline
+    
+    Mean squared error is a common loss function used to evaluate linear regression models, and Log Loss is typically used to evaluate logistic regression models.
+    
+     **Linear Regression:** Log Loss  
+    **Logistic Regression:** Mean squared error
+    
+5. ## Which of the following is an effective regularization technique for logistic regression models?
+    
+     Dropout regularization
+    
+     Late stopping
+    
+     Early stopping
+    
+    check_circle_outline
+    
+    Early stopping is a regularization technique in which model training is stopped while loss values are still decreasing, which can help prevent overfitting.
+    
+     Gradient descent

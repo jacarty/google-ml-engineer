@@ -1,0 +1,2629 @@
+Source: https://cloud.google.com/vertex-ai/docs/training/using-hyperparameter-tuning
+Downloaded: 2026-02-22
+
+Home
+Documentation
+AI and ML
+Vertex AI
+Send feedback
+Create a hyperparameter tuning job
+Stay organized with collections
+Save and categorize content based on your preferences.
+Hyperparameters are variables that govern the process of training a model, such
+as batch size or the number of hidden layers in a deep neural network.
+Hyperparameter tuning searches for the best combination of hyperparameter
+values by optimizing metric values across a series of trials. Metrics are
+scalar summaries that you add to your trainer, such as model accuracy.
+Learn more about hyperparameter tuning on
+Vertex AI
+. For a step-by-step example, refer to the
+Vertex AI: Hyperparameter Tuning codelab
+.
+This page shows you how to:
+Prepare your training application for hyperparameter tuning by updating it
+to
+accept hyperparameters as command-line
+arguments
+, and
+report metric values to
+Vertex AI
+.
+Create your hyperparameter training job
+. For more information
+about configuration options, see
+understanding hyperparameter tuning
+configuration
+.
+Prepare your training application
+In a hyperparameter tuning job, Vertex AI creates trials of your
+training job with different sets of hyperparameters and evaluates the
+effectiveness of a trial using the metrics you specified. Vertex AI
+passes hyperparameter values to your training application as command-line
+arguments. For Vertex AI to evaluate the effectiveness of a trial,
+your training application must report your metrics to Vertex AI.
+The following sections describe:
+How Vertex AI passes hyperparameters to your training
+application.
+Options for passing metrics from your training application to
+Vertex AI.
+To learn more about the requirements for serverless training applications that run
+on Vertex AI, read
+Training code requirements
+.
+Handle the command-line arguments for the hyperparameters you want to tune
+Vertex AI sets command-line arguments when it calls your training
+application. Make use of the command-line arguments in your code:
+Define a name for each hyperparameter argument and parse it using whatever
+argument parser you prefer, such as
+argparse
+.
+Use the same argument names when configuring your hyperparameter
+training job.
+For example, if your training application is a Python module named
+my_trainer
+and you are tuning a hyperparameter named
+learning_rate
+,
+Vertex AI starts each trial with a command like the following:
+python3 -m my_trainer --learning_rate
+learning-rate-in-this-trial
+Vertex AI determines the
+learning-rate-in-this-trial
+and passes it in using the
+learning_rate
+argument.
+Assign the values from the command-line arguments to the hyperparameters in
+your training code.
+Learn more about the requirements for parsing command-line
+arguments
+.
+Report your metrics to Vertex AI
+To report your metrics to Vertex AI, use  the
+cloudml-hypertune
+Python package
+. This library provides helper
+functions for reporting metrics to Vertex AI.
+Learn more about reporting hyperparameter metrics
+.
+Create a hyperparameter tuning job
+Depending on what tool you want to use to create a
+HyperparameterTuningJob
+,
+select one of the following tabs:
+Console
+In the Google Cloud console, you can't create a
+HyperparameterTuningJob
+resource
+directly. However, you can create a
+TrainingPipeline
+resource that creates a
+HyperparameterTuningJob
+.
+The following instructions describe how to create a
+TrainingPipeline
+that
+creates a
+HyperparameterTuningJob
+and doesn't do anything else. If you want to
+use additional
+TrainingPipeline
+features, like training with a managed
+dataset, read
+Creating training
+pipelines
+.
+In the Google Cloud console, in the Vertex AI section, go
+to the
+Training pipelines
+page.
+Go to Training pipelines
+Click
+add_box
+Create
+to open the
+Train new model
+pane.
+On the
+Training method
+step, specify the following settings:
+In the
+Dataset
+drop-down list, select
+No managed
+dataset.
+Select
+Custom training (advanced)
+.
+Click
+Continue
+.
+On the
+Model details
+step, choose
+Train new model
+or
+Train new version
+.
+If you select train new model, enter a name of your choice,
+MODEL_NAME
+, for your model. Click
+Continue
+.
+On the
+Training container
+step, specify the following settings:
+Select
+whether to use a
+Prebuilt container
+or a
+Custom
+container
+for training.
+Depending on your choice, do one of the following:
+If you want to use a prebuilt container for training, then provide
+Vertex AI with information it needs to use the training
+package that you have uploaded to Cloud Storage:
+Use the
+Model framework
+and
+Model framework version
+drop-down lists to specify the
+prebuilt
+container
+that you want to
+use.
+In the
+Package location
+field, specify the
+Cloud Storage URI of the
+Python training application that
+you have created and
+uploaded
+. This
+file usually ends with
+.tar.gz
+.
+In the
+Python module
+field, enter the
+module name of your
+training application's entry
+point
+.
+If you want to use a
+custom container for
+training
+, then in the
+Container image
+field, specify the Artifact Registry
+or Docker Hub URI of your container image.
+In the
+Model output directory
+field,
+you may
+specify the Cloud Storage URI of a directory in a
+bucket that you have access to. The directory does not need to exist yet.
+This value gets passed to Vertex AI in the
+baseOutputDirectory
+API
+field
+, which sets
+several environment variables that your training application can access
+when it runs
+.
+Optional
+: In the
+Arguments
+field, you can specify arguments for
+Vertex AI to use when it starts running your training code.
+The maximum length for all arguments combined is 100,000 characters.
+The behavior of these arguments differs depending on what type of
+container you are using:
+If you are using a prebuilt container, then Vertex AI
+passes the arguments as command-line flags to your
+Python module
+.
+If you are using a custom container, then Vertex AI
+overrides your container's
+CMD
+instruction with the
+arguments
+.
+Click
+Continue
+.
+On the
+Hyperparameter tuning
+step, select
+Enable
+hyperparameter tuning
+checkbox and specify the following settings:
+In the
+New Hyperparameter
+section, specify the
+Parameter name
+and
+Type
+of a hyperparameter that you want to tune. Depending on which
+type you specify, configure the additional hyperparameter settings that
+appear.
+Learn more about
+hyperparameter types and their
+configurations
+.
+If you want to tune more than one hyperparameter, click
+Add new
+parameter
+and repeat the previous step in the new section that appears.
+Repeat this for each hyperparameter that you want to tune.
+In the
+Metric to optimize
+field and the
+Goal
+drop-down list,
+specify the name and goal of the
+metric that you want to
+optimize
+.
+In the
+Maximum number of trials
+field, specify the
+maximum number of
+trials
+that you want Vertex AI to run for your hyperparameter
+tuning job.
+In the
+Maximum number of parallel trials
+field, specify the
+maximum
+number of trials to let Vertex AI run at the same
+time
+.
+In the
+Search algorithm
+drop-down list, specify a
+search
+algorithm
+for Vertex AI to use.
+Ignore the
+Enable early stopping
+toggle, which has no effect.
+Click
+Continue
+.
+On the
+Compute and pricing
+step, specify the following settings:
+In the
+Region
+drop-down list, select a "
+region that supports custom
+training
+"
+In the
+Worker pool 0
+section, specify
+compute
+resources
+to use for training.
+If you specify accelerators,
+make sure the type of accelerator that you
+choose is available in your selected
+region
+.
+If you want to perform
+distributed
+training
+, then click
+Add more
+worker pools
+and specify an additional set of compute resources for
+each additional worker pool that you want.
+Click
+Continue
+.
+On the
+Prediction container
+step, select
+No prediction
+container
+.
+Click
+Start training
+to start the serverless training pipeline.
+gcloud
+The following steps show how to use the Google Cloud CLI to create a
+HyperparameterTuningJob
+with a relatively minimal configuration. To learn
+about all the configuration options that you can use for this task, see the
+reference documentation for the
+gcloud ai hp-tuning-jobs create
+command
+and the
+HyperparameterTuningJob
+API resource
+.
+Create a YAML file named
+config.yaml
+with some API fields that you want
+to specify for your new
+HyerparameterTuningJob
+:
+config.yaml
+studySpec
+:
+metrics
+:
+-
+metricId
+:
+METRIC_ID
+goal
+:
+METRIC_GOAL
+parameters
+:
+-
+parameterId
+:
+HYPERPARAMETER_ID
+doubleValueSpec
+:
+minValue
+:
+DOUBLE_MIN_VALUE
+maxValue
+:
+DOUBLE_MAX_VALUE
+trialJobSpec
+:
+workerPoolSpecs
+:
+-
+machineSpec
+:
+machineType
+:
+MACHINE_TYPE
+replicaCount
+:
+1
+containerSpec
+:
+imageUri
+:
+CUSTOM_CONTAINER_IMAGE_URI
+Replace the following:
+METRIC_ID
+: the name of a
+hyperparameter metric
+to
+optimize. Your training code must
+report this metric
+when it
+runs.
+METRIC_GOAL
+: the goal for your hyperparameter metric,
+either
+MAXIMIZE
+or
+MINIMIZE
+.
+HYPERPARAMETER_ID
+: the name of a hyperparameter to tune.
+Your training code must
+parse a command-line flag with this name
+.
+For this example, the hyperparameter must take
+floating-point values. Learn about other
+hyperparameter data types
+.
+DOUBLE_MIN_VALUE
+: The minimum value (a number)
+that you want Vertex AI to try for this hyperparameter.
+DOUBLE_MAX_VALUE
+: The maximum value (a number)
+that you want Vertex AI to try for this hyperparameter.
+MACHINE_TYPE
+: the
+type of VM
+to use for training.
+CUSTOM_CONTAINER_IMAGE_URI
+: the URI of a Docker
+container image with your training code. Learn how to
+create a custom container image
+.
+For this example, you must use a custom container.
+HyperparameterTuningJob
+resources also support
+training code in a Python source distribution
+instead of a custom
+container.
+In the same directory as your
+config.yaml
+file, run the following shell
+command:
+gcloud
+ai
+hp-tuning-jobs
+create
+\
+--region
+=
+LOCATION
+\
+--display-name
+=
+DISPLAY_NAME
+\
+--max-trial-count
+=
+MAX_TRIAL_COUNT
+\
+--parallel-trial-count
+=
+PARALLEL_TRIAL_COUNT
+\
+--config
+=
+config.yaml
+Replace the following:
+LOCATION
+: the region where you want to create the
+HyperparameterTuningJob
+. Use a
+region that supports serverless training
+.
+DISPLAY_NAME
+: a memorable display name of your choice
+for the
+HyperparameterTuningJob
+. See
+REST resource
+.
+MAX_TRIAL_COUNT
+: the
+maximum number of trials to run
+.
+PARALLEL_TRIAL_COUNT
+: the
+maximum number of trials to run in parallel
+.
+REST
+Use the following code sample to create a hyperparameter tuning job using
+the
+create
+method of the
+hyperparameterTuningJob
+resource
+.
+Before using any of the request data,
+make the following replacements:
+LOCATION
+: the region where you want to create the
+HyperparameterTuningJob
+. Use a
+region that supports serverless training
+.
+PROJECT
+: Your
+project ID
+.
+DISPLAY_NAME
+: a memorable display name of your choice
+for the
+HyperparameterTuningJob
+. See
+REST resource
+.
+Specify your metrics:
+METRIC_ID
+: the name of a
+hyperparameter metric
+to
+optimize. Your training code must
+report this metric
+when it
+runs.
+METRIC_GOAL
+: the goal for your hyperparameter metric,
+either
+MAXIMIZE
+or
+MINIMIZE
+.
+Specify your hyperparameters:
+HYPERPARAMETER_ID
+: the name of a hyperparameter to tune.
+Your training code must
+parse a command-line flag with this name
+.
+PARAMETER_SCALE
+: (Optional.) How the parameter should be scaled. Leave unset
+for CATEGORICAL parameters. Can be
+UNIT_LINEAR_SCALE
+,
+UNIT_LOG_SCALE
+,
+UNIT_REVERSE_LOG_SCALE
+, or
+SCALE_TYPE_UNSPECIFIED
+If this hyperparameter's type is DOUBLE, specify the minimum (
+DOUBLE_MIN_VALUE
+)
+and maximum (
+DOUBLE_MAX_VALUE
+) values for this hyperparameter.
+If this hyperparameter's type is INTEGER, specify the minimum
+(
+INTEGER_MIN_VALUE
+) and maximum (
+INTEGER_MAX_VALUE
+) values for
+this hyperparameter.
+If this hyperparameter's type is CATEGORICAL, specify the acceptable values
+(
+CATEGORICAL_VALUES
+) as an array of strings.
+If this hyperparameter's type is DISCRETE, specify the acceptable values
+(
+DISCRETE_VALUES
+) as an array of numbers.
+Specify conditional hyperparameters. Conditional hyperparameters are added to a trial when
+the parent hyperparameter's value matches the condition you specify. Learn more about
+conditional hyperparameters
+.
+CONDITIONAL_PARAMETER
+: The
+ParameterSpec
+of the conditional
+parameter. This specification includes the parameter's name, scale, range of values,
+and any conditional parameters that depend on this hyperparameter.
+If the parent hyperparameter's type is INTEGER, specify a list of integers as the
+INTEGERS_TO_MATCH
+. If the parent hyperparameter's value matches one of the
+values specified, this conditional parameter is added to the trial.
+If the parent hyperparameter's type is CATEGORICAL, specify a list of categories as
+the
+CATEGORIES_TO_MATCH
+. If the parent hyperparameter's value matches one of
+the values specified, this conditional parameter is added to the trial.
+If the parent hyperparameter's type is DISCRETE, specify a list of integers as the
+DISCRETE_VALUES_TO_MATCH
+. If the parent hyperparameter's value matches one of
+the values specified, this conditional parameter is added to the trial.
+ALGORITHM
+: (Optional.) The search algorithm to use in this hyperparameter tuning
+job. Can be
+ALGORITHM_UNSPECIFIED
+,
+GRID_SEARCH
+, or
+RANDOM_SEARCH
+.
+MAX_TRIAL_COUNT
+: the
+maximum number of trials to run
+.
+PARALLEL_TRIAL_COUNT
+: the
+maximum number of trials to run in parallel
+.
+MAX_FAILED_TRIAL_COUNT
+: The number of jobs that can fail before the hyperparameter
+tuning job fails.
+Define the trial custom training job:
+MACHINE_TYPE
+: the
+type of VM
+to use for training.
+ACCELERATOR_TYPE
+: (Optional.) The type of accelerator to attach to each
+trial.
+ACCELERATOR_COUNT
+: (Optional.) The number of accelerators to attach to
+each trial.
+REPLICA_COUNT
+: The number of worker replicas to use for each trial.
+If your training application runs in a custom container, specify the following:
+CUSTOM_CONTAINER_IMAGE_URI
+: the URI of a Docker
+container image with your training code. Learn how to
+create a custom container image
+.
+CUSTOM_CONTAINER_COMMAND
+: (Optional.) The command to be invoked when the
+container is started. This command overrides the container's default entrypoint.
+CUSTOM_CONTAINER_ARGS
+: (Optional.) The arguments to be passed when
+starting the container.
+If your training application is a Python package that runs in a prebuilt container,
+specify the following:
+PYTHON_PACKAGE_EXECUTOR_IMAGE_URI
+: The URI of the container image that runs the
+provided python package. Learn more about
+prebuilt containers for training
+.
+PYTHON_PACKAGE_URIS
+: The Cloud Storage location of the Python
+package files which are the training program and its dependent packages. The maximum
+number of package URIs is 100.
+PYTHON_MODULE
+: The Python module name to run after installing the packages.
+PYTHON_PACKAGE_ARGS
+: (Optional.) Command-line arguments to be passed to
+the Python module.
+SERVICE_ACCOUNT
+: (Optional.) The service account that Vertex AI
+will use to run your code. Learn more about
+attaching a custom service account
+.
+TIMEOUT
+: (Optional.) The maximum running time for each trial.
+Specify the
+LABEL_NAME
+and
+LABEL_VALUE
+for any labels that you want to
+apply to this hyperparameter tuning job.
+HTTP method and URL:
+POST https://
+LOCATION
+-aiplatform.googleapis.com/v1/projects/
+PROJECT
+/locations/
+LOCATION
+/hyperparameterTuningJobs
+Request JSON body:
+{
+"displayName":
+DISPLAY_NAME
+,
+"studySpec": {
+"metrics": [
+{
+"metricId":
+METRIC_ID
+,
+"goal":
+METRIC_GOAL
+}
+],
+"parameters": [
+{
+"parameterId":
+PARAMETER_ID
+,
+"scaleType":
+PARAMETER_SCALE
+,
+
+// Union field parameter_value_spec can be only one of the following:
+"doubleValueSpec": {
+"minValue":
+DOUBLE_MIN_VALUE
+,
+"maxValue":
+DOUBLE_MAX_VALUE
+},
+"integerValueSpec": {
+"minValue":
+INTEGER_MIN_VALUE
+,
+"maxValue":
+INTEGER_MAX_VALUE
+},
+"categoricalValueSpec": {
+"values": [
+CATEGORICAL_VALUES
+]
+},
+"discreteValueSpec": {
+"values": [
+DISCRETE_VALUES
+]
+}
+// End of list of possible types for union field parameter_value_spec.
+
+"conditionalParameterSpecs": [
+"parameterSpec": {
+CONDITIONAL_PARAMETER
+}
+
+// Union field parent_value_condition can be only one of the following:
+"parentIntValues": {
+"values": [
+INTEGERS_TO_MATCH
+]
+}
+"parentCategoricalValues": {
+"values": [
+CATEGORIES_TO_MATCH
+]
+}
+"parentDiscreteValues": {
+"values": [
+DISCRETE_VALUES_TO_MATCH
+]
+}
+// End of list of possible types for union field parent_value_condition.
+]
+}
+],
+"ALGORITHM":
+ALGORITHM
+},
+"maxTrialCount":
+MAX_TRIAL_COUNT
+,
+"parallelTrialCount":
+PARALLEL_TRIAL_COUNT
+,
+"maxFailedTrialCount":
+MAX_FAILED_TRIAL_COUNT
+,
+"trialJobSpec": {
+"workerPoolSpecs": [
+{
+"machineSpec": {
+"machineType":
+MACHINE_TYPE
+,
+"acceleratorType":
+ACCELERATOR_TYPE
+,
+"acceleratorCount":
+ACCELERATOR_COUNT
+},
+"replicaCount":
+REPLICA_COUNT
+,
+
+// Union field task can be only one of the following:
+"containerSpec": {
+"imageUri":
+CUSTOM_CONTAINER_IMAGE_URI
+,
+"command": [
+CUSTOM_CONTAINER_COMMAND
+],
+"args": [
+CUSTOM_CONTAINER_ARGS
+]
+},
+"pythonPackageSpec": {
+"executorImageUri":
+PYTHON_PACKAGE_EXECUTOR_IMAGE_URI
+,
+"packageUris": [
+PYTHON_PACKAGE_URIS
+],
+"pythonModule":
+PYTHON_MODULE
+,
+"args": [
+PYTHON_PACKAGE_ARGS
+]
+}
+// End of list of possible types for union field task.
+}
+],
+"scheduling": {
+"TIMEOUT":
+TIMEOUT
+},
+"serviceAccount":
+SERVICE_ACCOUNT
+},
+"labels": {
+LABEL_NAME_1
+":
+LABEL_VALUE_1
+,
+LABEL_NAME_2
+":
+LABEL_VALUE_2
+}
+}
+To send your request, expand one of these options:
+curl (Linux, macOS, or Cloud Shell)
+Save the request body in a file named
+request.json
+,
+and execute the following command:
+curl -X POST \
+-H "Authorization: Bearer $(gcloud auth print-access-token)" \
+-H "Content-Type: application/json; charset=utf-8" \
+-d @request.json \
+"https://
+LOCATION
+-aiplatform.googleapis.com/v1/projects/
+PROJECT
+/locations/
+LOCATION
+/hyperparameterTuningJobs"
+PowerShell (Windows)
+Save the request body in a file named
+request.json
+,
+and execute the following command:
+$cred = gcloud auth print-access-token
+$headers = @{ "Authorization" = "Bearer $cred" }
+Invoke-WebRequest `
+-Method POST `
+-Headers $headers `
+-ContentType: "application/json; charset=utf-8" `
+-InFile request.json `
+-Uri "https://
+LOCATION
+-aiplatform.googleapis.com/v1/projects/
+PROJECT
+/locations/
+LOCATION
+/hyperparameterTuningJobs" | Select-Object -Expand Content
+You should receive a JSON response similar to the following:
+{
+"name": "projects/12345/locations/us-central1/hyperparameterTuningJobs/6789",
+"displayName": "myHyperparameterTuningJob",
+"studySpec": {
+"metrics": [
+{
+"metricId": "myMetric",
+"goal": "MINIMIZE"
+}
+],
+"parameters": [
+{
+"parameterId": "myParameter1",
+"integerValueSpec": {
+"minValue": "1",
+"maxValue": "128"
+},
+"scaleType": "UNIT_LINEAR_SCALE"
+},
+{
+"parameterId": "myParameter2",
+"doubleValueSpec": {
+"minValue": 1e-07,
+"maxValue": 1
+},
+"scaleType": "UNIT_LINEAR_SCALE"
+}
+],
+"ALGORITHM": "RANDOM_SEARCH"
+},
+"maxTrialCount": 20,
+"parallelTrialCount": 1,
+"trialJobSpec": {
+"workerPoolSpecs": [
+{
+"machineSpec": {
+"machineType": "n1-standard-4"
+},
+"replicaCount": "1",
+"pythonPackageSpec": {
+"executorImageUri": "us-docker.pkg.dev/vertex-ai/training/training-tf-cpu.2-1:latest",
+"packageUris": [
+"gs://my-bucket/my-training-application/trainer.tar.bz2"
+],
+"pythonModule": "my-trainer.trainer"
+}
+}
+]
+}
+}
+Java
+Before trying this sample, follow the
+Java
+setup instructions in the
+Vertex AI quickstart using
+client libraries
+.
+
+For more information, see the
+Vertex AI
+Java
+API
+reference documentation
+.
+To authenticate to Vertex AI, set up Application Default Credentials.
+For more information, see
+Set up authentication for a local development environment
+.
+import
+com.google.cloud.aiplatform.v1.
+AcceleratorType
+;
+import
+com.google.cloud.aiplatform.v1.
+CustomJobSpec
+;
+import
+com.google.cloud.aiplatform.v1.
+HyperparameterTuningJob
+;
+import
+com.google.cloud.aiplatform.v1.
+JobServiceClient
+;
+import
+com.google.cloud.aiplatform.v1.
+JobServiceSettings
+;
+import
+com.google.cloud.aiplatform.v1.
+LocationName
+;
+import
+com.google.cloud.aiplatform.v1.
+MachineSpec
+;
+import
+com.google.cloud.aiplatform.v1.
+PythonPackageSpec
+;
+import
+com.google.cloud.aiplatform.v1.
+StudySpec
+;
+import
+com.google.cloud.aiplatform.v1.
+StudySpec
+.MetricSpec
+;
+import
+com.google.cloud.aiplatform.v1.
+StudySpec
+.MetricSpec.GoalType
+;
+import
+com.google.cloud.aiplatform.v1.
+StudySpec
+.
+ParameterSpec
+;
+import
+com.google.cloud.aiplatform.v1.
+StudySpec
+.
+ParameterSpec
+.
+ConditionalParameterSpec
+;
+import
+com.google.cloud.aiplatform.v1.
+StudySpec
+.
+ParameterSpec
+.
+ConditionalParameterSpec
+.
+DiscreteValueCondition
+;
+import
+com.google.cloud.aiplatform.v1.
+StudySpec
+.
+ParameterSpec
+.
+DiscreteValueSpec
+;
+import
+com.google.cloud.aiplatform.v1.
+StudySpec
+.
+ParameterSpec
+.
+DoubleValueSpec
+;
+import
+com.google.cloud.aiplatform.v1.
+StudySpec
+.
+ParameterSpec
+.
+ScaleType
+;
+import
+com.google.cloud.aiplatform.v1.
+WorkerPoolSpec
+;
+import
+java.io.IOException
+;
+import
+java.util.Arrays
+;
+public
+class
+CreateHyperparameterTuningJobPythonPackageSample
+{
+public
+static
+void
+main
+(
+String
+[]
+args
+)
+throws
+IOException
+{
+// TODO(developer): Replace these variables before running the sample.
+String
+project
+=
+"PROJECT"
+;
+String
+displayName
+=
+"DISPLAY_NAME"
+;
+String
+executorImageUri
+=
+"EXECUTOR_IMAGE_URI"
+;
+String
+packageUri
+=
+"PACKAGE_URI"
+;
+String
+pythonModule
+=
+"PYTHON_MODULE"
+;
+createHyperparameterTuningJobPythonPackageSample
+(
+project
+,
+displayName
+,
+executorImageUri
+,
+packageUri
+,
+pythonModule
+);
+}
+static
+void
+createHyperparameterTuningJobPythonPackageSample
+(
+String
+project
+,
+String
+displayName
+,
+String
+executorImageUri
+,
+String
+packageUri
+,
+String
+pythonModule
+)
+throws
+IOException
+{
+JobServiceSettings
+settings
+=
+JobServiceSettings
+.
+newBuilder
+()
+.
+setEndpoint
+(
+"us-central1-aiplatform.googleapis.com:443"
+)
+.
+build
+();
+String
+location
+=
+"us-central1"
+;
+// Initialize client that will be used to send requests. This client only needs to be created
+// once, and can be reused for multiple requests. After completing all of your requests, call
+// the "close" method on the client to safely clean up any remaining background resources.
+try
+(
+JobServiceClient
+client
+=
+JobServiceClient
+.
+create
+(
+settings
+))
+{
+// study spec
+MetricSpec
+metric
+=
+MetricSpec
+.
+newBuilder
+().
+setMetricId
+(
+"val_rmse"
+).
+setGoal
+(
+GoalType
+.
+MINIMIZE
+).
+build
+();
+// decay
+DoubleValueSpec
+doubleValueSpec
+=
+DoubleValueSpec
+.
+newBuilder
+().
+setMinValue
+(
+1e-07
+).
+setMaxValue
+(
+1
+).
+build
+();
+ParameterSpec
+parameterDecaySpec
+=
+ParameterSpec
+.
+newBuilder
+()
+.
+setParameterId
+(
+"decay"
+)
+.
+setDoubleValueSpec
+(
+doubleValueSpec
+)
+.
+setScaleType
+(
+ScaleType
+.
+UNIT_LINEAR_SCALE
+)
+.
+build
+();
+Double
+[]
+decayValues
+=
+{
+32.0
+,
+64.0
+};
+DiscreteValueCondition
+discreteValueDecay
+=
+DiscreteValueCondition
+.
+newBuilder
+().
+addAllValues
+(
+Arrays
+.
+asList
+(
+decayValues
+)).
+build
+();
+ConditionalParameterSpec
+conditionalParameterDecay
+=
+ConditionalParameterSpec
+.
+newBuilder
+()
+.
+setParameterSpec
+(
+parameterDecaySpec
+)
+.
+setParentDiscreteValues
+(
+discreteValueDecay
+)
+.
+build
+();
+// learning rate
+ParameterSpec
+parameterLearningSpec
+=
+ParameterSpec
+.
+newBuilder
+()
+.
+setParameterId
+(
+"learning_rate"
+)
+.
+setDoubleValueSpec
+(
+doubleValueSpec
+)
+// Use the same min/max as for decay
+.
+setScaleType
+(
+ScaleType
+.
+UNIT_LINEAR_SCALE
+)
+.
+build
+();
+Double
+[]
+learningRateValues
+=
+{
+4.0
+,
+8.0
+,
+16.0
+};
+DiscreteValueCondition
+discreteValueLearning
+=
+DiscreteValueCondition
+.
+newBuilder
+()
+.
+addAllValues
+(
+Arrays
+.
+asList
+(
+learningRateValues
+))
+.
+build
+();
+ConditionalParameterSpec
+conditionalParameterLearning
+=
+ConditionalParameterSpec
+.
+newBuilder
+()
+.
+setParameterSpec
+(
+parameterLearningSpec
+)
+.
+setParentDiscreteValues
+(
+discreteValueLearning
+)
+.
+build
+();
+// batch size
+Double
+[]
+batchSizeValues
+=
+{
+4.0
+,
+8.0
+,
+16.0
+,
+32.0
+,
+64.0
+,
+128.0
+};
+DiscreteValueSpec
+discreteValueSpec
+=
+DiscreteValueSpec
+.
+newBuilder
+().
+addAllValues
+(
+Arrays
+.
+asList
+(
+batchSizeValues
+)).
+build
+();
+ParameterSpec
+parameter
+=
+ParameterSpec
+.
+newBuilder
+()
+.
+setParameterId
+(
+"batch_size"
+)
+.
+setDiscreteValueSpec
+(
+discreteValueSpec
+)
+.
+setScaleType
+(
+ScaleType
+.
+UNIT_LINEAR_SCALE
+)
+.
+addConditionalParameterSpecs
+(
+conditionalParameterDecay
+)
+.
+addConditionalParameterSpecs
+(
+conditionalParameterLearning
+)
+.
+build
+();
+// trial_job_spec
+MachineSpec
+machineSpec
+=
+MachineSpec
+.
+newBuilder
+()
+.
+setMachineType
+(
+"n1-standard-4"
+)
+.
+setAcceleratorType
+(
+AcceleratorType
+.
+NVIDIA_TESLA_T4
+)
+.
+setAcceleratorCount
+(
+1
+)
+.
+build
+();
+PythonPackageSpec
+pythonPackageSpec
+=
+PythonPackageSpec
+.
+newBuilder
+()
+.
+setExecutorImageUri
+(
+executorImageUri
+)
+.
+addPackageUris
+(
+packageUri
+)
+.
+setPythonModule
+(
+pythonModule
+)
+.
+build
+();
+WorkerPoolSpec
+workerPoolSpec
+=
+WorkerPoolSpec
+.
+newBuilder
+()
+.
+setMachineSpec
+(
+machineSpec
+)
+.
+setReplicaCount
+(
+1
+)
+.
+setPythonPackageSpec
+(
+pythonPackageSpec
+)
+.
+build
+();
+StudySpec
+studySpec
+=
+StudySpec
+.
+newBuilder
+()
+.
+addMetrics
+(
+metric
+)
+.
+addParameters
+(
+parameter
+)
+.
+setAlgorithm
+(
+StudySpec
+.
+Algorithm
+.
+RANDOM_SEARCH
+)
+.
+build
+();
+CustomJobSpec
+trialJobSpec
+=
+CustomJobSpec
+.
+newBuilder
+().
+addWorkerPoolSpecs
+(
+workerPoolSpec
+).
+build
+();
+// hyperparameter_tuning_job
+HyperparameterTuningJob
+hyperparameterTuningJob
+=
+HyperparameterTuningJob
+.
+newBuilder
+()
+.
+setDisplayName
+(
+displayName
+)
+.
+setMaxTrialCount
+(
+4
+)
+.
+setParallelTrialCount
+(
+2
+)
+.
+setStudySpec
+(
+studySpec
+)
+.
+setTrialJobSpec
+(
+trialJobSpec
+)
+.
+build
+();
+LocationName
+parent
+=
+LocationName
+.
+of
+(
+project
+,
+location
+);
+HyperparameterTuningJob
+response
+=
+client
+.
+createHyperparameterTuningJob
+(
+parent
+,
+hyperparameterTuningJob
+);
+System
+.
+out
+.
+format
+(
+"response: %s\n"
+,
+response
+);
+System
+.
+out
+.
+format
+(
+"Name: %s\n"
+,
+response
+.
+getName
+());
+}
+}
+}
+Python
+To learn how to install or update the Vertex AI SDK for Python, see
+Install the Vertex AI SDK for Python
+.
+
+For more information, see the
+Python
+API reference documentation
+.
+from
+google.cloud
+import
+aiplatform
+from
+google.cloud.aiplatform
+import
+hyperparameter_tuning
+as
+hpt
+def
+create_hyperparameter_tuning_job_sample
+(
+project
+:
+str
+,
+location
+:
+str
+,
+staging_bucket
+:
+str
+,
+display_name
+:
+str
+,
+container_uri
+:
+str
+,
+):
+aiplatform
+.
+init
+(
+project
+=
+project
+,
+location
+=
+location
+,
+staging_bucket
+=
+staging_bucket
+)
+worker_pool_specs
+=
+[
+{
+"machine_spec"
+:
+{
+"machine_type"
+:
+"n1-standard-4"
+,
+"accelerator_type"
+:
+"NVIDIA_TESLA_K80"
+,
+"accelerator_count"
+:
+1
+,
+},
+"replica_count"
+:
+1
+,
+"container_spec"
+:
+{
+"image_uri"
+:
+container_uri
+,
+"command"
+:
+[],
+"args"
+:
+[],
+},
+}
+]
+custom_job
+=
+aiplatform
+.
+CustomJob
+(
+display_name
+=
+'custom_job'
+,
+worker_pool_specs
+=
+worker_pool_specs
+,
+)
+hpt_job
+=
+aiplatform
+.
+HyperparameterTuningJob
+(
+display_name
+=
+display_name
+,
+custom_job
+=
+custom_job
+,
+metric_spec
+=
+{
+'loss'
+:
+'minimize'
+,
+},
+parameter_spec
+=
+{
+'lr'
+:
+hpt
+.
+DoubleParameterSpec
+(
+min
+=
+0.001
+,
+max
+=
+0.1
+,
+scale
+=
+'log'
+),
+'units'
+:
+hpt
+.
+IntegerParameterSpec
+(
+min
+=
+4
+,
+max
+=
+128
+,
+scale
+=
+'linear'
+),
+'activation'
+:
+hpt
+.
+CategoricalParameterSpec
+(
+values
+=
+[
+'relu'
+,
+'selu'
+]),
+'batch_size'
+:
+hpt
+.
+DiscreteParameterSpec
+(
+values
+=
+[
+128
+,
+256
+],
+scale
+=
+'linear'
+)
+},
+max_trial_count
+=
+128
+,
+parallel_trial_count
+=
+8
+,
+labels
+=
+{
+'my_key'
+:
+'my_value'
+},
+)
+hpt_job
+.
+run
+()
+print
+(
+hpt_job
+.
+resource_name
+)
+return
+hpt_job
+Hyperparameter training job configuration
+Hyperparameter tuning jobs search for the best combination of hyperparameters
+to optimize your metrics. Hyperparameter tuning jobs do this by running
+multiple trials of your training application with different sets of
+hyperparameters.
+When you configure a hyperparameter tuning job, you must specify the
+following details:
+The hyperparameters you want to tune and the metrics that you want to use to
+evaluate trials.
+Learn more about selecting hyperparameters and metrics
+.
+Details about the number of trials to run as a part of this tuning job,
+such as the following:
+The maximum number of trials to run
+.
+The number of trials that can run in parallel
+.
+The maximum number of trials that are allowed to fail before the job
+stops early
+.
+Details about the serverless training job that is run for each trial, such as
+the following:
+The
+machine type
+that the trials jobs run in and the
+accelerators that the job uses.
+The details of the custom container or Python package job.
+Learn more about training code requirements
+.
+Limit the number of trials
+Decide how many trials you want to allow the service to run and set
+the
+maxTrialCount
+value in the
+HyperparameterTuningJob
+object.
+There are two competing interests to consider when deciding how many trials to
+allow:
+time (and therefore cost)
+accuracy
+Increasing the number of trials generally yields better results, but it is not
+always so. Usually, there is a point of diminishing returns after which
+additional trials have little or no effect on the accuracy. Before starting a
+job with a large number of trials, you may want to start with a small number
+of trials to gauge the effect your chosen hyperparameters have on your
+model's accuracy.
+To get the most out of hyperparameter tuning, you shouldn't set your maximum
+value lower than ten times the number of hyperparameters you use.
+Parallel trials
+You can specify how many trials can run in parallel by setting
+parallelTrialCount
+in the
+HyperparameterTuningJob
+.
+Running parallel trials has the benefit of reducing the time the training job
+takes (real time—the total processing time
+required is not typically changed). However, running in parallel can reduce the
+effectiveness of the tuning job overall. That is because hyperparameter tuning
+uses the results of previous trials to inform the values to assign to the
+hyperparameters of subsequent trials. When running in parallel, some trials
+start without having the benefit of the results of any trials still running.
+If you use parallel trials, the hyperparameter tuning service provisions
+multiple training processing clusters (or multiple individual machines in the
+case of a single-process trainer). The work pool spec that you set for your job
+is used for each individual training cluster.
+Handle failed trials
+If your hyperparameter tuning trials exit with errors, you might want to
+end the training job early. Set the
+maxFailedTrialCount
+field in the
+HyperparameterTuningJob
+to the number of failed trials that
+you want to allow. After this number of trials fails, Vertex AI
+ends the training job. The
+maxFailedTrialCount
+value must be less than or equal to
+maxTrialCount
+.
+If you don't set
+maxFailedTrialCount
+, or if you set it to
+0
+,
+Vertex AI uses the following rules to handle failing trials:
+If the first trial of your job fails, Vertex AI ends the job
+immediately. Failure during the first trial suggests a problem in your
+training code, so further trials are also likely to fail. Ending the job lets
+you diagnose the problem without waiting for more trials and incurring
+greater costs.
+If the first trial succeeds, Vertex AI might end the job after
+failures during subsequent trials based on one of the following criteria:
+The number of failed trials has grown too high.
+The ratio of failed trials to successful trials has grown too high.
+These rules are subject to change. To ensure a specific behavior,
+set the
+maxFailedTrialCount
+field.
+Manage hyperparameter tuning jobs
+The following sections describe how to manage your hyperparameter tuning jobs.
+Retrieve information about a hyperparameter tuning job
+The following code samples demonstrate how to retrieve a hyperparameter tuning
+job.
+gcloud
+Use the
+gcloud ai hp-tuning-jobs describe
+command
+:
+gcloud
+ai
+hp-tuning-jobs
+describe
+ID_OR_NAME
+\
+--region
+=
+LOCATION
+Replace the following:
+ID_OR_NAME
+: either the
+name
+or
+the numerical ID of the
+HyperparameterTuningJob
+. (The ID is the last part of
+the name.)
+You might have seen the ID or name when you created the
+HyperparameterTuningJob
+. If you don't know the ID or name, you can run the
+gcloud ai hp-tuning-jobs list
+command
+and look for the appropriate
+resource.
+LOCATION
+: the region where the
+HyperparameterTuningJob
+was created.
+REST
+Use the following code sample to retrieve a hyperparameter tuning job using
+the
+get
+method of the
+hyperparameterTuningJob
+resource
+.
+Before using any of the request data,
+make the following replacements:
+LOCATION
+: the region where the
+HyperparameterTuningJob
+was created.
+NAME
+: The name of the hyperparameter tuning job. The job name uses the following
+format
+projects/{project}/LOCATIONS/{LOCATION}/hyperparameterTuningJobs/{hyperparameterTuningJob}
+.
+HTTP method and URL:
+GET https://
+LOCATION
+-aiplatform.googleapis.com/v1/
+NAME
+To send your request, expand one of these options:
+curl (Linux, macOS, or Cloud Shell)
+Execute the following command:
+curl -X GET \
+-H "Authorization: Bearer $(gcloud auth print-access-token)" \
+"https://
+LOCATION
+-aiplatform.googleapis.com/v1/
+NAME
+"
+PowerShell (Windows)
+Execute the following command:
+$cred = gcloud auth print-access-token
+$headers = @{ "Authorization" = "Bearer $cred" }
+Invoke-WebRequest `
+-Method GET `
+-Headers $headers `
+-Uri "https://
+LOCATION
+-aiplatform.googleapis.com/v1/
+NAME
+" | Select-Object -Expand Content
+You should receive a JSON response similar to the following:
+{
+"name": "projects/12345/LOCATIONs/us-central1/hyperparameterTuningJobs/6789",
+"displayName": "my-hyperparameter-tuning-job",
+"studySpec": {
+"metrics": [
+{
+"metricId": "my_metric",
+"goal": "MINIMIZE"
+}
+],
+"parameters": [
+{
+"parameterId": "my_parameter",
+"doubleValueSpec": {
+"minValue": 1e-05,
+"maxValue": 1
+}
+}
+]
+},
+"maxTrialCount": 3,
+"parallelTrialCount": 1,
+"trialJobSpec": {
+"workerPoolSpecs": [
+{
+"machineSpec": {
+"machineType": "n1-standard-4"
+},
+"replicaCount": "1",
+"pythonPackageSpec": {
+"executorImageUri": "us-docker.pkg.dev/vertex-ai/training/training-tf-cpu.2-1:latest",
+"packageUris": [
+"gs://my-bucket/my-training-application/trainer.tar.bz2"
+],
+"pythonModule": "my-trainer.trainer"
+}
+}
+]
+},
+"trials": [
+{
+"id": "2",
+"state": "SUCCEEDED",
+"parameters": [
+{
+"parameterId": "my_parameter",
+"value": 0.71426874725564571
+}
+],
+"finalMeasurement": {
+"stepCount": "2",
+"metrics": [
+{
+"metricId": "my_metric",
+"value": 0.30007445812225342
+}
+]
+},
+"startTime": "2020-09-09T23:39:15.549112551Z",
+"endTime": "2020-09-09T23:47:08Z"
+},
+{
+"id": "3",
+"state": "SUCCEEDED",
+"parameters": [
+{
+"parameterId": "my_parameter",
+"value": 0.3078893356622992
+}
+],
+"finalMeasurement": {
+"stepCount": "2",
+"metrics": [
+{
+"metricId": "my_metric",
+"value": 0.30000102519989014
+}
+]
+},
+"startTime": "2020-09-09T23:49:22.451699360Z",
+"endTime": "2020-09-09T23:57:15Z"
+},
+{
+"id": "1",
+"state": "SUCCEEDED",
+"parameters": [
+{
+"parameterId": "my_parameter",
+"value": 0.500005
+}
+],
+"finalMeasurement": {
+"stepCount": "2",
+"metrics": [
+{
+"metricId": "my_metric",
+"value": 0.30005377531051636
+}
+]
+},
+"startTime": "2020-09-09T23:23:12.283374629Z",
+"endTime": "2020-09-09T23:36:56Z"
+}
+],
+"state": "JOB_STATE_SUCCEEDED",
+"createTime": "2020-09-09T23:22:31.777386Z",
+"startTime": "2020-09-09T23:22:34Z",
+"endTime": "2020-09-10T01:31:24.271307Z",
+"updateTime": "2020-09-10T01:31:24.271307Z"
+}
+Java
+Before trying this sample, follow the
+Java
+setup instructions in the
+Vertex AI quickstart using
+client libraries
+.
+
+For more information, see the
+Vertex AI
+Java
+API
+reference documentation
+.
+To authenticate to Vertex AI, set up Application Default Credentials.
+For more information, see
+Set up authentication for a local development environment
+.
+import
+com.google.cloud.aiplatform.v1.
+HyperparameterTuningJob
+;
+import
+com.google.cloud.aiplatform.v1.
+HyperparameterTuningJobName
+;
+import
+com.google.cloud.aiplatform.v1.
+JobServiceClient
+;
+import
+com.google.cloud.aiplatform.v1.
+JobServiceSettings
+;
+import
+java.io.IOException
+;
+public
+class
+GetHyperparameterTuningJobSample
+{
+public
+static
+void
+main
+(
+String
+[]
+args
+)
+throws
+IOException
+{
+// TODO(developer): Replace these variables before running the sample.
+String
+project
+=
+"PROJECT"
+;
+String
+hyperparameterTuningJobId
+=
+"HYPERPARAMETER_TUNING_JOB_ID"
+;
+getHyperparameterTuningJobSample
+(
+project
+,
+hyperparameterTuningJobId
+);
+}
+static
+void
+getHyperparameterTuningJobSample
+(
+String
+project
+,
+String
+hyperparameterTuningJobId
+)
+throws
+IOException
+{
+JobServiceSettings
+settings
+=
+JobServiceSettings
+.
+newBuilder
+()
+.
+setEndpoint
+(
+"us-central1-aiplatform.googleapis.com:443"
+)
+.
+build
+();
+String
+location
+=
+"us-central1"
+;
+// Initialize client that will be used to send requests. This client only needs to be created
+// once, and can be reused for multiple requests. After completing all of your requests, call
+// the "close" method on the client to safely clean up any remaining background resources.
+try
+(
+JobServiceClient
+client
+=
+JobServiceClient
+.
+create
+(
+settings
+))
+{
+HyperparameterTuningJobName
+name
+=
+HyperparameterTuningJobName
+.
+of
+(
+project
+,
+location
+,
+hyperparameterTuningJobId
+);
+HyperparameterTuningJob
+response
+=
+client
+.
+getHyperparameterTuningJob
+(
+name
+);
+System
+.
+out
+.
+format
+(
+"response: %s\n"
+,
+response
+);
+}
+}
+}
+Python
+To learn how to install or update the Vertex AI SDK for Python, see
+Install the Vertex AI SDK for Python
+.
+
+For more information, see the
+Python
+API reference documentation
+.
+# Copyright 2022 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+from
+google.cloud
+import
+aiplatform
+def
+get_hyperparameter_tuning_job_sample
+(
+project
+:
+str
+,
+hyperparameter_tuning_job_id
+:
+str
+,
+location
+:
+str
+=
+"us-central1"
+,
+):
+aiplatform
+.
+init
+(
+project
+=
+project
+,
+location
+=
+location
+)
+hpt_job
+=
+aiplatform
+.
+HyperparameterTuningJob
+.
+get
+(
+resource_name
+=
+hyperparameter_tuning_job_id
+,
+)
+return
+hpt_job
+Cancel a hyperparameter tuning job
+The following code samples demonstrate how to cancel a hyperparameter tuning
+job.
+gcloud
+Use the
+gcloud ai hp-tuning-jobs cancel
+command
+:
+gcloud
+ai
+hp-tuning-jobs
+cancel
+ID_OR_NAME
+\
+--region
+=
+LOCATION
+Replace the following:
+ID_OR_NAME
+: either the
+name
+or
+the numerical ID of the
+HyperparameterTuningJob
+. (The ID is the last part of
+the name.)
+You might have seen the ID or name when you created the
+HyperparameterTuningJob
+. If you don't know the ID or name, you can run the
+gcloud ai hp-tuning-jobs list
+command
+and look for the appropriate
+resource.
+LOCATION
+: the region where the
+HyperparameterTuningJob
+was created.
+REST
+Use the following code sample to cancel a hyperparameter tuning job using
+the
+cancel
+method of the
+hyperparameterTuningJob
+resource
+.
+Before using any of the request data,
+make the following replacements:
+LOCATION
+: the region where the
+HyperparameterTuningJob
+was created.
+NAME
+: The name of the hyperparameter tuning job. The job name uses the following
+format
+projects/{project}/locations/{location}/hyperparameterTuningJobs/{hyperparameterTuningJob}
+.
+HTTP method and URL:
+POST https://
+LOCATION
+-aiplatform.googleapis.com/v1/
+NAME
+:cancel
+To send your request, expand one of these options:
+curl (Linux, macOS, or Cloud Shell)
+Execute the following command:
+curl -X POST \
+-H "Authorization: Bearer $(gcloud auth print-access-token)" \
+-H "Content-Type: application/json; charset=utf-8" \
+-d "" \
+"https://
+LOCATION
+-aiplatform.googleapis.com/v1/
+NAME
+:cancel"
+PowerShell (Windows)
+Execute the following command:
+$cred = gcloud auth print-access-token
+$headers = @{ "Authorization" = "Bearer $cred" }
+Invoke-WebRequest `
+-Method POST `
+-Headers $headers `
+-Uri "https://
+LOCATION
+-aiplatform.googleapis.com/v1/
+NAME
+:cancel" | Select-Object -Expand Content
+You should receive a successful status code (2xx) and an empty response.
+Python
+To learn how to install or update the Vertex AI SDK for Python, see
+Install the Vertex AI SDK for Python
+.
+
+For more information, see the
+Python
+API reference documentation
+.
+from
+google.cloud
+import
+aiplatform
+def
+cancel_hyperparameter_tuning_job_sample
+(
+project
+:
+str
+,
+hyperparameter_tuning_job_id
+:
+str
+,
+location
+:
+str
+=
+"us-central1"
+,
+):
+aiplatform
+.
+init
+(
+project
+=
+project
+,
+location
+=
+location
+)
+hpt_job
+=
+aiplatform
+.
+HyperparameterTuningJob
+.
+get
+(
+resource_name
+=
+hyperparameter_tuning_job_id
+,
+)
+hpt_job
+.
+cancel
+()
+Delete a hyperparameter tuning job
+The following code samples demonstrate how to delete a hyperparameter tuning
+job using the Vertex AI SDK for Python and the REST API.
+REST
+Use the following code sample to delete a hyperparameter tuning job using
+the
+delete
+method of the
+hyperparameterTuningJob
+resource
+.
+Before using any of the request data,
+make the following replacements:
+LOCATION
+: Your region.
+NAME
+: The name of the hyperparameter tuning job. The job name uses the following
+format
+projects/{project}/LOCATIONs/{LOCATION}/hyperparameterTuningJobs/{hyperparameterTuningJob}
+.
+HTTP method and URL:
+DELETE https://
+LOCATION
+-aiplatform.googleapis.com/v1/
+NAME
+To send your request, expand one of these options:
+curl (Linux, macOS, or Cloud Shell)
+Execute the following command:
+curl -X DELETE \
+-H "Authorization: Bearer $(gcloud auth print-access-token)" \
+"https://
+LOCATION
+-aiplatform.googleapis.com/v1/
+NAME
+"
+PowerShell (Windows)
+Execute the following command:
+$cred = gcloud auth print-access-token
+$headers = @{ "Authorization" = "Bearer $cred" }
+Invoke-WebRequest `
+-Method DELETE `
+-Headers $headers `
+-Uri "https://
+LOCATION
+-aiplatform.googleapis.com/v1/
+NAME
+" | Select-Object -Expand Content
+You should receive a successful status code (2xx) and an empty response.
+Python
+To learn how to install or update the Vertex AI SDK for Python, see
+Install the Vertex AI SDK for Python
+.
+
+For more information, see the
+Python
+API reference documentation
+.
+from
+google.cloud
+import
+aiplatform
+def
+delete_hyperparameter_tuning_job_sample
+(
+project
+:
+str
+,
+hyperparameter_tuning_job_id
+:
+str
+,
+location
+:
+str
+=
+"us-central1"
+,
+):
+aiplatform
+.
+init
+(
+project
+=
+project
+,
+location
+=
+location
+)
+hpt_job
+=
+aiplatform
+.
+HyperparameterTuningJob
+.
+get
+(
+resource_name
+=
+hyperparameter_tuning_job_id
+,
+)
+hpt_job
+.
+delete
+()
+What's next
+Learn more about
+the concepts involved in hyperparameter
+tuning
+.
+Learn how to
+schedule serverless training jobs based on resource availability
+.
+Send feedback

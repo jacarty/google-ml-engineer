@@ -1,0 +1,551 @@
+# Lab 2 Part 3: Custom Training with Vertex AI
+
+**Goal:** Train a custom scikit-learn model using Vertex AI pre-built containers and deploy to an endpoint for predictions.
+
+**What you'll do:**
+1. Submit custom training job using `lab2_train_v2.py` (production-ready with sklearn Pipeline)
+2. Deploy trained model to a Vertex AI endpoint
+3. Test predictions with **raw data** (no manual preprocessing needed!)
+
+**Key Learning:** Using sklearn Pipeline to bundle preprocessing + model together
+
+**Estimated time:** 30-40 minutes
+**Estimated cost:** $5-10
+
+
+```python
+# Find matching images
+!gcloud container images list --repository=us-docker.pkg.dev/vertex-ai/training --filter="sklearn" --format="value(name)"
+!gcloud container images list --repository=us-docker.pkg.dev/vertex-ai/prediction --filter="sklearn"
+```
+
+# Build Container
+
+1. Login
+```
+gcloud auth configure-docker us-central1-docker.pkg.dev
+```
+
+2. Create Artifact Registry repo (one-time):
+```
+gcloud artifacts repositories create ml-containers \
+    --repository-format=docker \
+    --location=us-central1 \
+    --project=carty-470812
+```
+
+2. Build and push the container:
+```
+docker build --platform linux/amd64 -t us-central1-docker.pkg.dev/carty-470812/ml-containers/census-sklearn:latest .
+docker push us-central1-docker.pkg.dev/carty-470812/ml-containers/census-sklearn:latest
+```
+
+## Setup
+
+
+```python
+# Install required packages
+!pip install setuptools google-cloud-aiplatform -q 
+```
+
+
+```python
+from google.cloud import aiplatform
+from datetime import datetime
+import pandas as pd
+
+# Project configuration
+PROJECT_ID = 'carty-470812'
+REGION = 'us-central1'
+BUCKET_NAME = 'carty-470812-ml-census-data'
+
+# Data paths
+DATA_PATH = f'gs://{BUCKET_NAME}/data/census_income.csv'
+
+# Model storage (we'll create a timestamped directory)
+TIMESTAMP = datetime.now().strftime('%Y%m%d_%H%M%S')
+MODEL_DIR = f'gs://{BUCKET_NAME}/models/census-sklearn-{TIMESTAMP}'
+
+# Initialize Vertex AI SDK with staging bucket
+aiplatform.init(
+    project=PROJECT_ID, 
+    location=REGION,
+    staging_bucket=f'gs://{BUCKET_NAME}/staging'
+)
+
+print(f"📋 Configuration:")
+print(f"   Project: {PROJECT_ID}")
+print(f"   Region: {REGION}")
+print(f"   Data: {DATA_PATH}")
+print(f"   Model output: {MODEL_DIR}")
+print(f"   Staging bucket: gs://{BUCKET_NAME}/staging")
+print(f"\n✅ Vertex AI initialized")
+```
+
+    📋 Configuration:
+       Project: carty-470812
+       Region: us-central1
+       Data: gs://carty-470812-ml-census-data/data/census_income.csv
+       Model output: gs://carty-470812-ml-census-data/models/census-sklearn-20260217_122318
+       Staging bucket: gs://carty-470812-ml-census-data/staging
+    
+    ✅ Vertex AI initialized
+
+
+
+```python
+# Initialize Vertex AI SDK
+aiplatform.init(project=PROJECT_ID, location=REGION)
+
+print("✅ Vertex AI initialized")
+```
+
+    ✅ Vertex AI initialized
+
+
+## Step 1: Submit Custom Training Job
+
+This will:
+1. Upload your `lab2_train.py` to Vertex AI
+2. Run it in Google's pre-built scikit-learn container
+3. Train the model and save to GCS
+4. Register the model in Vertex AI Model Registry
+
+**⏱️ Expected duration:** 10-15 minutes
+
+
+```python
+CUSTOM_IMAGE = f'us-central1-docker.pkg.dev/{PROJECT_ID}/ml-containers/census-sklearn:latest'
+
+job = aiplatform.CustomContainerTrainingJob(
+    display_name=f'census-sklearn-custom-{TIMESTAMP}',
+    
+    # Same custom image for BOTH training and serving
+    container_uri=CUSTOM_IMAGE,
+    
+    # Serving config - same image, different entrypoint
+    model_serving_container_image_uri=CUSTOM_IMAGE,
+    model_serving_container_command=['python', 'serve.py'],
+    model_serving_container_predict_route='/predict',
+    model_serving_container_health_route='/health',
+    model_serving_container_ports=[8080],
+)
+
+print("✅ Training job defined (custom container)")
+print(f"   Image: {CUSTOM_IMAGE}")
+print(f"   Same image for training AND serving = no version mismatch!")
+```
+
+
+```python
+print("🚀 Starting training job...")
+print(f"   Console: https://console.cloud.google.com/vertex-ai/training/custom-jobs?project={PROJECT_ID}")
+
+model = job.run(
+    args=[
+        '--data-path', DATA_PATH,
+        '--target-column', 'income_bracket',
+        '--n-estimators', '100',
+        '--max-depth', '5',
+        '--learning-rate', '0.1',
+        '--min-samples-split', '2',
+    ],
+    replica_count=1,
+    machine_type='n1-standard-4',
+    base_output_dir=f'gs://{BUCKET_NAME}/models/census-sklearn-model-{TIMESTAMP}/',
+    model_display_name=f'census-sklearn-model-{TIMESTAMP}',
+    sync=True,
+)
+
+print("\n" + "="*60)
+print("✅ TRAINING COMPLETE!")
+print("="*60)
+
+```
+
+## Step 2: Deploy Model to Endpoint
+
+This creates a REST API endpoint where you can send prediction requests.
+
+**⏱️ Expected duration:** 5-10 minutes
+**💰 Cost:** ~$1/hour while endpoint is running
+
+
+```python
+print("Getting the models...")
+
+
+from google.cloud import aiplatform
+
+# List models and get the most recent one
+models = aiplatform.Model.list(
+    filter=f'display_name="census-sklearn-model-{TIMESTAMP}"',
+    order_by="create_time desc"
+)
+
+model = models[0]
+print(f"✅ Found model: {model.display_name}")
+print(f"   Resource name: {model.resource_name}")
+```
+
+    Getting the models...
+    ✅ Found model: census-sklearn-model-20260217_092512
+       Resource name: projects/873708835509/locations/us-central1/models/3902737413511839744
+
+
+
+```python
+print("🚀 Deploying model to endpoint...")
+
+endpoint = model.deploy(
+    deployed_model_display_name=f'census-sklearn-model-20260217_092512',
+    machine_type='n1-standard-2',
+    min_replica_count=1,
+    max_replica_count=3,
+    traffic_percentage=100,
+    sync=True,
+)
+
+print("\n" + "="*60)
+print("✅ MODEL DEPLOYED!")
+print("="*60)
+print(f"   Endpoint: {endpoint.display_name}")
+print(f"   Endpoint ID: {endpoint.name.split('/')[-1]}")
+```
+
+    🚀 Deploying model to endpoint...
+    Creating Endpoint
+    Create Endpoint backing LRO: projects/873708835509/locations/us-central1/endpoints/1926343272351924224/operations/8381291548981067776
+    Endpoint created. Resource name: projects/873708835509/locations/us-central1/endpoints/1926343272351924224
+    To use this Endpoint in another session:
+    endpoint = aiplatform.Endpoint('projects/873708835509/locations/us-central1/endpoints/1926343272351924224')
+    Deploying model to Endpoint : projects/873708835509/locations/us-central1/endpoints/1926343272351924224
+    Deploy Endpoint model backing LRO: projects/873708835509/locations/us-central1/endpoints/1926343272351924224/operations/4414464702197792768
+    Endpoint model deployed. Resource name: projects/873708835509/locations/us-central1/endpoints/1926343272351924224
+    
+    ============================================================
+    ✅ MODEL DEPLOYED!
+    ============================================================
+       Endpoint: census-sklearn-model-20260217_092512_endpoint
+       Endpoint ID: 1926343272351924224
+
+
+## Step 3: Test Predictions
+
+Now let's send test data to the endpoint and get predictions!
+
+**🎯 Key Advantage of Pipeline Approach:**
+- We send **RAW categorical data** (e.g., 'workclass': 'Private')
+- The Pipeline automatically one-hot encodes it before feeding to the model
+- No manual preprocessing needed!
+
+This is **exactly how production ML systems work** - users send raw data, the model handles the rest.
+
+
+```python
+test_instances = [
+    {
+        'age': 39,
+        'workclass': 'Private',
+        'functional_weight': 77516,
+        'education': 'Bachelors',
+        'education_num': 13,
+        'marital_status': 'Never-married',
+        'occupation': 'Tech-support',
+        'relationship': 'Not-in-family',
+        'race': 'White',
+        'sex': 'Male',
+        'capital_gain': 2174,
+        'capital_loss': 0,
+        'hours_per_week': 40,
+        'native_country': 'United-States'
+    },
+    {
+        'age': 50,
+        'workclass': 'Self-emp-inc',
+        'functional_weight': 83311,
+        'education': 'Masters',
+        'education_num': 14,
+        'marital_status': 'Married-civ-spouse',
+        'occupation': 'Exec-managerial',
+        'relationship': 'Husband',
+        'race': 'White',
+        'sex': 'Male',
+        'capital_gain': 15024,
+        'capital_loss': 0,
+        'hours_per_week': 50,
+        'native_country': 'United-States'
+    },
+    {
+        'age': 25,
+        'workclass': 'Private',
+        'functional_weight': 226802,
+        'education': 'HS-grad',
+        'education_num': 9,
+        'marital_status': 'Never-married',
+        'occupation': 'Other-service',
+        'relationship': 'Own-child',
+        'race': 'Black',
+        'sex': 'Female',
+        'functional_weight': 186451,
+        'capital_gain': 0,
+        'capital_loss': 0,
+        'hours_per_week': 35,
+        'native_country': 'United-States'
+    }
+]
+
+print(f"🔮 Testing {len(test_instances)} predictions...\n")
+```
+
+    🔮 Testing 3 predictions...
+    
+
+
+
+```python
+# Get the endpoint
+endpoints = aiplatform.Endpoint.list(order_by="create_time desc")
+for e in endpoints:
+    print(f"{e.display_name} | {e.resource_name}")
+    
+endpoint = endpoints[0]
+print(f"✅ Found endpoint: {endpoint.display_name}")
+```
+
+    census-sklearn-model-20260217_092512_endpoint | projects/873708835509/locations/us-central1/endpoints/1926343272351924224
+    ✅ Found endpoint: census-sklearn-model-20260217_092512_endpoint
+
+
+
+```python
+# Get predictions
+predictions = endpoint.predict(instances=test_instances)
+
+print("="*60)
+print("📊 PREDICTION RESULTS")
+print("="*60)
+
+for i, (instance, pred) in enumerate(zip(test_instances, predictions.predictions), 1):
+    print(f"\n{'='*60}")
+    print(f"Example {i}:")
+    print(f"{'='*60}")
+    
+    # Show input features
+    print(f"\n📋 Input:")
+    print(f"   Age: {instance['age']}")
+    print(f"   Education: {instance['education']}")
+    print(f"   Occupation: {instance['occupation']}")
+    print(f"   Hours/week: {instance['hours_per_week']}")
+    print(f"   Marital status: {instance['marital_status']}")
+    
+    # Show prediction
+    # Note: The exact format depends on how your model outputs predictions
+    # It might be a class (0/1) or probability [prob_class_0, prob_class_1]
+    print(f"\n🎯 Prediction: {pred}")
+    
+    # If it's a probability array, interpret it
+    if isinstance(pred, list) and len(pred) == 2:
+        prob_low = pred[0] * 100
+        prob_high = pred[1] * 100
+        prediction_class = '>50K' if pred[1] > 0.5 else '<=50K'
+        print(f"   Probability <=50K: {prob_low:.1f}%")
+        print(f"   Probability >50K: {prob_high:.1f}%")
+        print(f"   → Predicted class: {prediction_class}")
+    else:
+        # Direct class prediction
+        prediction_class = '>50K' if pred == 1 else '<=50K'
+        print(f"   → Predicted class: {prediction_class}")
+
+print("\n" + "="*60)
+```
+
+    ============================================================
+    📊 PREDICTION RESULTS
+    ============================================================
+    
+    ============================================================
+    Example 1:
+    ============================================================
+    
+    📋 Input:
+       Age: 39
+       Education: Bachelors
+       Occupation: Tech-support
+       Hours/week: 40
+       Marital status: Never-married
+    
+    🎯 Prediction: 0.0
+       → Predicted class: <=50K
+    
+    ============================================================
+    Example 2:
+    ============================================================
+    
+    📋 Input:
+       Age: 50
+       Education: Masters
+       Occupation: Exec-managerial
+       Hours/week: 50
+       Marital status: Married-civ-spouse
+    
+    🎯 Prediction: 1.0
+       → Predicted class: >50K
+    
+    ============================================================
+    Example 3:
+    ============================================================
+    
+    📋 Input:
+       Age: 25
+       Education: HS-grad
+       Occupation: Other-service
+       Hours/week: 35
+       Marital status: Never-married
+    
+    🎯 Prediction: 0.0
+       → Predicted class: <=50K
+    
+    ============================================================
+
+
+## Step 4: Batch Predictions (Optional)
+
+Instead of online predictions one-by-one, you can also run batch predictions on a whole dataset stored in GCS.
+
+
+```python
+# OPTIONAL: Run batch predictions on a larger dataset
+# Uncomment to use:
+
+# batch_job = model.batch_predict(
+#     job_display_name=f'census-batch-{TIMESTAMP}',
+#     gcs_source=DATA_PATH,  # Input data
+#     gcs_destination_prefix=f'gs://{BUCKET_NAME}/predictions/batch-{TIMESTAMP}/',  # Output location
+#     machine_type='n1-standard-4',
+#     sync=True
+# )
+# 
+# print(f"✅ Batch predictions complete!")
+# print(f"   Results saved to: gs://{BUCKET_NAME}/predictions/batch-{TIMESTAMP}/")
+```
+
+## Step 5: Compare with AutoML (Lab 2 Part 2)
+
+How does this custom model compare to your AutoML model?
+
+
+```python
+print("🤔 Comparison: AutoML vs Custom Training")
+print("="*60)
+
+print("\n📊 Performance:")
+print("   AutoML:           86.8% accuracy  | ROC AUC: 0.95")
+print("   Custom (Vertex):  87.10% accuracy | ROC AUC: 0.93")
+print("   → Custom slightly beat AutoML on accuracy!")
+
+print("\n💰 Cost:")
+print("   AutoML:  $10-15")
+print("   Custom:  $0.04")
+print("   → Custom was ~250x cheaper")
+
+print("\n⏱️  Time:")
+print("   AutoML:  2+ hours")
+print("   Custom:  12 minutes")
+
+print("\n🎮 Control:")
+print("   AutoML:  Google chooses algorithm, hyperparameters, features")
+print("   Custom:  You control everything")
+
+print("\n💡 Key Takeaway:")
+print("   Custom training beat AutoML at 0.27% of the cost.")
+print("   AutoML is great for prototyping or when you lack ML expertise,")
+print("   but custom training wins on cost and control when you know")
+print("   what you're doing.")
+```
+
+    🤔 Comparison: AutoML vs Custom Training
+    ============================================================
+    
+    📊 Performance:
+       AutoML:           86.8% accuracy  | ROC AUC: 0.95
+       Custom (Vertex):  87.10% accuracy | ROC AUC: 0.93
+       → Custom slightly beat AutoML on accuracy!
+    
+    💰 Cost:
+       AutoML:  $10-15
+       Custom:  $0.04
+       → Custom was ~250x cheaper
+    
+    ⏱️  Time:
+       AutoML:  2+ hours
+       Custom:  12 minutes
+    
+    🎮 Control:
+       AutoML:  Google chooses algorithm, hyperparameters, features
+       Custom:  You control everything
+    
+    💡 Key Takeaway:
+       Custom training beat AutoML at 0.27% of the cost.
+       AutoML is great for prototyping or when you lack ML expertise,
+       but custom training wins on cost and control when you know
+       what you're doing.
+
+
+## Cleanup (IMPORTANT!)
+
+**💰 The endpoint costs ~$1/hour while deployed.**
+
+When you're done testing, undeploy the model to stop charges:
+
+
+```python
+# Undeploy the model (stops serving infrastructure)
+print("🧹 Undeploying model from endpoint...")
+endpoint.undeploy_all()
+print("✅ Model undeployed - charges stopped")
+
+# Note: This keeps the endpoint resource but removes all deployed models
+# The endpoint itself has no cost when no models are deployed
+```
+
+
+```python
+# Optional: Delete the endpoint entirely
+# Uncomment if you want to remove it completely:
+
+# endpoint.delete()
+# print("✅ Endpoint deleted")
+```
+
+## Summary
+
+**What you accomplished:**
+- ✅ Trained a custom scikit-learn model on Vertex AI (no Docker needed!)
+- ✅ Used sklearn Pipeline to bundle preprocessing + model together
+- ✅ Deployed model to a production endpoint
+- ✅ Made real-time predictions with **raw data** (no manual preprocessing!)
+- ✅ Compared custom training vs. AutoML
+
+**Key learnings:**
+1. **sklearn Pipeline** = Production ML best practice
+   - Bundles preprocessing + model into single artifact
+   - Prevents train-serve skew (same preprocessing in both!)
+   - Predictions work on raw data automatically
+   
+2. **Pre-built containers** eliminate Docker complexity for common frameworks
+
+3. **Custom training** gives you full control over preprocessing, algorithms, and hyperparameters
+
+4. **Vertex AI endpoints** provide scalable, production-ready serving infrastructure
+
+5. **Cost management** is critical - undeploy when not in use!
+
+**Next steps:**
+- Move to Lab 2 Part 4: Deploy a second model version and A/B test
+- Or jump to Week 4: Hyperparameter tuning to optimize this model further
+
+**Cost incurred:**
+- Training: ~$2-5
+- Serving (if left deployed): ~$1/hour
+- **Total so far:** < $10

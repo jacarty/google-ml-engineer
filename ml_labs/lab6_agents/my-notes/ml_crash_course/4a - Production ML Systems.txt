@@ -1,0 +1,506 @@
+
+# Production ML systems
+
+**Learning objectives**
+
+- Appreciate the breadth of components in a production ML system.
+- Pick the ideal training paradigm (static versus dynamic).
+- Pick the ideal inference paradigm (static versus dynamic).
+- Test your machine learning deployment.
+- Ask the right questions about your production ML system.
+- Determine flaws in real-world ML models.
+- Monitor the components in a production ML system.
+
+So far, this course has focused on building machine learning (ML) models. However, as Figure 1 suggests, real-world production ML systems are large ecosystems and the model is just a single, relatively small part.
+
+![[Pasted image 20251204204909.png]]
+**Figure 1.** A real-world production ML system comprises many components.
+
+At the heart of a real-world machine learning production system is the ML model code, but it often represents only 5% or less of the total codebase in the system. That's not a misprint; it's significantly less than you might expect. Notice that an ML production system devotes considerable resources to the input data: collecting it, verifying it, and extracting features from it.
+
+# Production ML systems: Static versus dynamic training
+
+Broadly speaking, you can train a model in either of two ways:
+
+- [**Static training**](https://developers.google.com/machine-learning/glossary#static) (also called **offline training**) means that you train a model only once. You then serve that same trained model for a while.
+- [**Dynamic training**](https://developers.google.com/machine-learning/glossary#dynamic) (also called **online training**) means that you train a model continuously or at least frequently. You usually serve the most recently trained model.
+
+![Figure 2. Raw dough creates three identical loaves of bread.](https://developers.google.com/static/machine-learning/crash-course/images/StaticModel.png)
+
+**Figure 2.** Static training. Train once; serve the same built model multiple times. (Images by Pexels and by fancycrave1.)
+
+![[Pasted image 20251205061423.png]]
+**Figure 3.** Dynamic training. Retrain frequently; serve the most recently built model. (Images by Pexels and by Couleur.)
+
+![[Pasted image 20251205061453.png]]
+**Table 1.** Primary advantages and disadvantages.
+
+If your dataset truly isn't changing over time, choose static training because it is cheaper to create and maintain than dynamic training. However, datasets tend to change over time, even those with features that you think are as constant as, say, sea level. The takeaway: even with static training, you must still monitor your input data for change.
+
+For example, consider a model trained to predict the probability that users will buy flowers. Because of time pressure, the model is trained only once using a dataset of flower buying behavior during July and August. The model works fine for several months but then makes terrible predictions around [Valentine's Day](https://wikipedia.org/wiki/Valentine's_Day) because user behavior during that floral holiday period changes dramatically.
+
+For a more detailed exploration of static and dynamic training, see the [Managing ML Projects](https://developers.google.com/machine-learning/managing-ml-projects/pipelines) course.
+
+## Exercises: Check your understanding
+
+1 - Which **two** of the following statements are true about static (offline) training?
+
+The model stays up to date as new data arrives.
+
+**Offline training requires less monitoring of training jobs than online training.**
+
+*In general, monitoring requirements at training time are more modest for offline training, which insulates you from many production considerations. However, the more frequently you train your model, the higher the investment you'll need to make in monitoring. You'll also want to validate regularly to ensure that changes to your code (and its dependencies) don't adversely affect model quality.*
+
+Very little monitoring of input data needs to be done at inference time.
+
+**You can verify the model before applying it in production.**
+*Yes, offline training gives ample opportunity to verify model performance before introducing the model in production.*
+
+
+2 - Which **one** of the following statements is true of dynamic (online) training?
+
+Very little monitoring of training jobs needs to be done.
+
+**The model stays up to date as new data arrives.**
+
+*This is the primary benefit of online training; you can avoid many staleness issues by allowing the model to train on new data as it comes in.*
+
+Very little monitoring of input data needs to be done at inference time.
+
+
+# Production ML systems: Static versus dynamic inference
+
+[**Inference**](https://developers.google.com/machine-learning/glossary#inference) is the process of making predictions by applying a trained model to [**unlabeled examples**](https://developers.google.com/machine-learning/glossary#unlabeled_example). Broadly speaking, a model can infer predictions in one of two ways:
+
+- **Static inference** (also called **offline inference** or **batch inference**) means the model makes predictions on a bunch of common [**unlabeled examples**](https://developers.google.com/machine-learning/glossary#unlabeled_example) and then caches those predictions somewhere.
+- **Dynamic inference** (also called **online inference** or real-time inference) means that the model only makes predictions on demand, for example, when a client requests a prediction.
+
+To use an extreme example, imagine a very complex model that takes one hour to infer a prediction. This would probably be an excellent situation for static inference:
+
+![[Pasted image 20251205062853.png]]
+**Figure 4.** In static inference, a model generates predictions, which are then cached on a server.
+
+Suppose this same complex model mistakenly uses dynamic inference instead of static inference. If many clients request predictions around the same time, most of them won't receive that prediction for hours or days.
+
+Now consider a model that infers quickly, perhaps in 2 milliseconds using a relative minimum of computational resources. In this situation, clients can receive predictions quickly and efficiently through dynamic inference, as suggested in Figure 5.
+
+![[Pasted image 20251205062907.png]]
+**Figure 5.** In dynamic inference, a model infers predictions on demand.
+
+## Static inference
+
+Static inference offers certain advantages and disadvantages.
+
+Advantages
+
+- Don't need to worry much about cost of inference.
+- Can do post-verification of predictions before pushing.
+
+Disadvantages
+
+- Can only serve cached predictions, so the system might not be able to serve predictions for uncommon input examples.
+- Update latency is likely measured in hours or days.
+
+## Dynamic inference
+
+Dynamic inference offers certain advantages and disadvantages.
+
+Advantages
+
+- Can infer a prediction on _any_ new item as it comes in, which is great for long tail (less common) predictions.
+
+Disadvantages
+
+- Compute intensive and latency sensitive. This combination may limit model complexity; that is, you might have to build a simpler model that can infer predictions more quickly than a complex model could.
+- Monitoring needs are more intensive.
+
+## Exercises: Check your understanding
+
+1 - Which **three** of the following four statements are true of static inference?
+
+**The system can verify inferred predictions before serving them.**
+*Yes, the model must make predictions for all possible inputs and store them in a cache or lookup table. If the set of things that the model is predicting is limited, then static inference might be a good choice. However, for free-form inputs like user queries that have a long tail of unusual or rare items, static inference can't provide full coverage.*
+
+**The model must create predictions for all possible inputs.**
+*Yes, static inference can almost always serve predictions faster than dynamic inference.*
+
+**You can react quickly to changes in the world.**
+*Yes, this is a useful aspect of static inference.*
+
+For a given input, the model can serve a prediction more quickly than _dynamic_ inference.
+
+2 - Which **one** of the following statements is true of dynamic inference?
+
+**You can do post-verification of predictions before they are used.**
+*Yes, this is a strength of dynamic inference. Any request that comes in will be given a score. Dynamic inference handles long-tail distributions (those with many rare items), like the space of all possible sentences written in movie reviews.*
+
+You can provide predictions for all possible items.
+
+When performing dynamic inference, you don't need to worry about prediction latency (the lag time for returning predictions) as much as when performing static inference.
+
+# Production ML systems: When to transform data?
+
+Raw data must be feature engineered (transformed). When should you transform data? Broadly speaking, you can perform feature engineering during either of the following two periods:
+
+- _Before_ training the model.
+- _While_ training the model.
+
+## Transforming data before training
+
+In this approach, you follow two steps:
+
+1. Write code or use specialized tools to transform the raw data.
+2. Store the transformed data somewhere that the model can ingest, such as on disk.
+
+Advantages
+
+- The system transforms raw data only once.
+- The system can analyze the entire dataset to determine the best transformation strategy.
+
+Disadvantages
+
+- You must recreate the transformations at prediction time. Beware of [**training-serving skew**](https://developers.google.com/machine-learning/glossary#training-serving-skew)!
+
+Training-serving skew is more dangerous when your system performs dynamic (online) inference. On a system that uses dynamic inference, the software that transforms the raw dataset usually differs from the software that serves predictions, which can cause training-serving skew. In contrast, systems that use static (offline) inference can sometimes use the same software.
+
+## Transforming data while training
+
+In this approach, the transformation is part of the model code. The model ingests raw data and transforms it.
+
+Advantages
+
+- You can still use the same raw data files if you change the transformations.
+- You're ensured the same transformations at training and prediction time.
+
+Disadvantages
+
+- Complicated transforms can increase model latency.
+- Transformations occur for each and every batch.
+
+Transforming the data per batch can be tricky. For example, suppose you want to use [**Z-score normalization**](https://developers.google.com/machine-learning/glossary#z-score-normalization) to transform raw numerical data. Z-score normalization requires the mean and standard deviation of the feature. However, transformations per batch mean you'll only have access to _one batch of data_, not the full dataset. So, if the batches are highly variant, a Z-score of, say, -2.5 in one batch won't have the same meaning as -2.5 in another batch. As a workaround, your system can precompute the mean and standard deviation across the entire dataset and then use them as constants in the model.
+
+# Production ML systems: Deployment testing
+
+You're ready to deploy the unicorn model that predicts unicorn appearances! When deploying, your machine learning (ML) pipeline should run, update, and serve without a problem. If only deploying a model were as easy as pressing a big **Deploy** button. Unfortunately, a full machine learning system requires tests for:
+
+- Validating input data.
+- Validating feature engineering.
+- Validating the quality of new model versions.
+- Validating serving infrastructure.
+- Testing integration between pipeline components.
+
+Many software engineers favor test-driven development (TDD). In TDD, software engineers write tests _prior_ to writing the "real" source code. However, TDD can be tricky in machine learning. For example, before training your model, you can't write a test to validate the loss. Instead, you must first discover the achievable loss during model development and _then_ test new model versions against the achievable loss.
+
+## About the unicorn model
+
+This section refers to the **unicorn model**. Here's what you need to know:
+
+> You are using machine learning to build a classification model that predicts unicorn appearances. Your dataset details 10,000 unicorn appearances and 10,000 unicorn non-appearances. The dataset contains the location, time of day, elevation, temperature, humidity, tree cover, presence of a rainbow, and several other features.
+
+## Test model updates with reproducible training
+
+Perhaps you want to continue improving your unicorn model. For example, suppose you do some additional feature engineering on a certain feature and then retrain the model, hoping to get better (or at least the same) results. Unfortunately, it is sometimes difficult to reproduce model training. To improve reproducibility, follow these recommendations:
+
+- Deterministically seed the random number generator. For details, see [randomization in data generation](https://developers.google.com/machine-learning/crash-course/production-ml-systems/monitoring#randomization)
+    
+- Initialize model components in a fixed order to ensure the components get the same random number from the random number generator on every run. ML libraries typically handle this requirement automatically.
+    
+- Take the average of several runs of the model.
+    
+- Use version control, even for preliminary iterations, so that you can pinpoint code and parameters when investigating your model or pipeline.
+    
+
+Even after following these guidelines, other sources of nondeterminism might still exist.
+
+## Test calls to machine learning API
+
+How do you test updates to API calls? You could retrain your model, but that's time intensive. Instead, write a unit test to generate random input data and run a single step of gradient descent. If this step completes without errors, then any updates to the API probably haven't ruined your model.
+
+## Write integration tests for pipeline components
+
+In an ML pipeline, changes in one component can cause errors in other components. Check that components work together by writing an **integration test** that runs the entire pipeline end-to-end.
+
+Besides running integration tests continuously, you should run integration tests when pushing new models and new software versions. The slowness of running the entire pipeline makes continuous integration testing harder. To run integration tests faster, train on a subset of the data or with a simpler model. The details depend on your model and data. To get continuous coverage, you'd adjust your faster tests so that they run with every new version of model or software. Meanwhile, your slow tests would run continuously in the background.
+
+## Validate model quality before serving
+
+Before pushing a new model version to production, test for the following two types of quality degradations:
+
+- **Sudden degradation.** A bug in the new version could cause significantly lower quality. Validate new versions by checking their quality against the previous version.
+    
+- **Slow degradation.** Your test for sudden degradation might not detect a slow degradation in model quality over multiple versions. Instead, ensure your model's predictions on a validation dataset meet a fixed threshold. If your validation dataset deviates from live data, then update your validation dataset and ensure your model still meets the same quality threshold.
+    
+
+## Validate model-infrastructure compatibility before serving
+
+If your model is updated faster than your server, then your model could have different software dependencies from your server, potentially causing incompatibilities. Ensure that the operations used by the model are present in the server by staging the model in a sandboxed version of the server.
+
+# Production ML systems: Monitoring pipelines
+
+Congratulations! You've deployed the [unicorn model](https://developers.google.com/machine-learning/crash-course/production-ml-systems/deployment-testing#unicorn). Your model should run 24x7 without any problems. To ensure that it does, you must monitor your machine learning (ML) pipeline.
+
+## Write a data schema to validate raw data
+
+To monitor your data, you should continuously check it against expected statistical values by writing rules that the data must satisfy. This collection of rules is called a _data schema_. Define a data schema by following these steps:
+
+1. Understand the range and distribution of your features. For categorical features, understand the set of possible values.
+    
+2. Encode your understanding into the data schema. The following are examples of rules:
+    
+    - Ensure that user-submitted ratings are always in the range 1 to 5.
+    - Check that the word _the_ occurs most frequently (for an English text feature).
+    - Check that each categorical feature is set to a value from a fixed set of possible values.
+3. Test your data against the data schema. Your schema should catch data errors such as:
+    
+    - Anomalies
+    - Unexpected values of categorical variables
+    - Unexpected data distributions
+
+## Write unit tests to validate feature engineering
+
+While your raw data might pass the data schema, your model doesn't train on raw data. Rather, your model trains on data that has been feature engineered. For example, your model trains on normalized numerical features rather than raw numerical data. Because feature engineered data can be very different from raw input data, you must check feature engineered data separately from your checks on raw input data.
+
+Write unit tests based on your understanding of feature engineered data. For example, you can write unit tests to check for conditions such as the following:
+
+- All numeric features are scaled, for example, between 0 and 1.
+- [**One-hot encoded**](https://developers.google.com/machine-learning/glossary#one-hot-encoding) vectors only contain a single 1 and N-1 zeroes.
+- Data distributions after transformation conform to expectations. For example, if you've normalized using Z-scores, the mean of the Z-scores should be 0.
+- [**Outliers**](https://developers.google.com/machine-learning/glossary#outliers) are handled, such as by [**scaling**](https://developers.google.com/machine-learning/glossary#scaling) or [**clipping**](https://developers.google.com/machine-learning/glossary#clipping).
+
+## Check metrics for important data slices
+
+A successful whole sometimes obscures an unsuccessful subset. In other words, a model with great overall metrics might still make terrible predictions for certain situations. For example:
+
+> Your unicorn model performs well overall, but performs poorly when making predictions for the Sahara desert.
+
+If you are the kind of engineer satisfied with an overall great AUC, then you might not notice the model's issues in the Sahara desert. If making good predictions for _every_ region is important, then you need to track performance for every region. Subsets of data, like the one corresponding to the Sahara desert, are called **data slices**.
+
+Identify data slices of interest. Then compare model metrics for these data slices against the metrics for your entire dataset. Checking that your model performs well across all data slices helps remove bias. See [Fairness: Evaluating for Bias](https://developers.google.com/machine-learning/crash-course/fairness/evaluating-for-bias) for more information.
+
+## Use real-world metrics
+
+Model metrics don't necessarily measure the real-world impact of your model. For example, changing a hyperparameter might increase a model's AUC, but how did the change affect user experience? To measure real-world impact, you need to define separate metrics. For example, you could survey users of your model to confirm that they really did see a unicorn when the model predicted they would.
+
+## Check for training-serving skew
+
+[**Training-serving skew**](https://developers.google.com/machine-learning/glossary#training-serving-skew) means your input data during training differs from your input data in serving. The following table describes the two important types of skew:
+
+|Type|Definition|Example|Solution|
+|---|---|---|---|
+|**Schema skew**|Training and serving input data do not conform to the same schema.|The format or distribution of the serving data changes while your model continues to train on old data.|Use the same schema to validate training and serving data. Ensure you separately check for statistics not checked by your schema, such as the fraction of missing values|
+|**Feature skew**|Engineered data differs between training and serving.|Feature engineering code differs between training and serving, producing different engineered data.|Similar to schema skew, apply the same statistical rules across training and serving engineered data. Track the number of detected skewed features, and the ratio of skewed examples per feature.|
+
+Causes of training-serving skew can be subtle. Always consider what data is available to your model at prediction time. During training, use only the features that you'll have available when serving.
+
+The Golden Rule: Ensure that training and production mimic each other as closely as possible. The more closely your training task matches your prediction task, the better your ML system will perform.
+
+### Exercise: Check your understanding
+
+Suppose you have an online store and want to predict how much money you’ll make on a given day. Your ML goal is to predict daily revenue using the number of customers as a feature.
+
+What problem might you encounter?
+
+**Answer:** The problem is that you don't know the number of customers at prediction time, before the day's sales are complete. So, this feature isn't useful, even if this feature is strongly predictive of your daily revenue. Relatedly, when you're training a model and get amazing evaluation metrics (like 0.99 [**AUC**](https://developers.google.com/machine-learning/glossary#AUC)), look for these sorts of features that can bleed into your label.
+
+## Check for label leakage
+
+[**Label leakage**](https://developers.google.com/machine-learning/glossary#label-leakage) means that your [**ground truth**](https://developers.google.com/machine-learning/glossary#ground-truth) labels that you're trying to predict have inadvertently entered your training features. Label leakage is sometimes very difficult to detect.
+
+### Exercise: Check your understanding
+
+Suppose you build a binary classification model to predict whether or not a new hospital patient has cancer. Your model uses features like the following:
+
+- Patient age
+- Patient gender
+- Prior medical conditions
+- Hospital name
+- Vital signs
+- Test results
+- Heredity
+
+The label is as follows:
+
+- Boolean: Does the patient have cancer?
+
+You partition the data carefully, ensuring that your training set is well isolated from your validation set and test set. The model performs exceedingly _well_ on the validation set and test set; the metrics are fantastic. Unfortunately, the model performs _terribly_ on new patients in the real world.
+
+Why did this model that excelled on the test set fail miserably in the real world?
+
+**Answer:** One of the model's features is hospital name. Certain hospitals specialize in treating cancer. During training, the model quickly learned that patients assigned to certain hospitals very likely had cancer. So, hospital name became a highly weighted feature.
+
+At inference time, most patients hadn't yet been assigned to a hospital. After all, the purpose of the model was to diagnose the presence or absence of cancer and to then use that diagnosis to assign the patient to an appropriate hospital. Consequently, during inference, the hospital name feature wasn't yet available and the model was forced to rely on other features.
+
+**Note:** This exercise is loosely based on ["Leakage in data mining: formulation, detection, and avoidance"](http://dl.acm.org/citation.cfm?id=2020496) by Kaufman, Rosset, and Perlich, with some modifications made along the way.
+
+## Monitor model age throughout pipeline
+
+If the serving data evolves with time but your model isn’t retrained regularly, then you will see a decline in model quality. Track the time since the model was retrained on new data and set a threshold age for alerts. Besides monitoring the model's age at serving, you should monitor the model's age throughout the pipeline to catch pipeline stalls.
+
+## Test that model weights and outputs are numerically stable
+
+During model training, your weights and layer outputs should not be NaN (not a number) or Inf (infinite). Write tests to check for NaN and Inf values of your weights and layer outputs. Additionally, test that more than half of the outputs of a layer are not zero.
+
+## Monitor model performance
+
+Your unicorn appearance predictor has been more popular than expected! You’re getting lots of prediction requests and even more training data. You think that's great until you realize that your model is taking more and more memory and time to train. You decide to monitor your model's performance by following these steps:
+
+- Track model performance by versions of code, model, and data. Such tracking lets you pinpoint the exact cause for any performance degradation.
+- Test the training steps per second for a new model version against the previous version and against a fixed threshold.
+- Catch memory leaks by setting a threshold for memory use.
+- Monitor API response times and track their percentiles. While API response times might be outside your control, slow responses could potentially cause poor real-world metrics.
+- Monitor the number of queries answered per second.
+
+## Test the quality of live model on served data
+
+You’ve validated your model. But what if real-world scenarios, such as unicorn behavior, change after recording your validation data? Then the quality of your served model will degrade. However, testing quality in serving is hard because real-world data is not always labeled. If your serving data is not labeled, consider these tests:
+
+- [Generate labels using human raters](https://developers.google.com/machine-learning/crash-course/overfitting/labels#human-generated_data).
+    
+- Investigate models that show significant statistical bias in predictions. See [Classification: Prediction Bias](https://developers.google.com/machine-learning/crash-course/classification/prediction-bias).
+    
+- Track real-world metrics for your model. For example, if you’re classifying spam, compare your predictions to user-reported spam.
+    
+- Mitigate potential divergence between training and serving data by serving a new model version on a fraction of your queries. As you validate your new serving model, gradually switch all queries to the new version.
+    
+
+Using these tests, remember to monitor both sudden and slow degradation in prediction quality.
+
+## Randomization
+
+Make your data generation pipeline reproducible. Say you want to add a feature to see how it affects model quality. For a fair experiment, your datasets should be identical except for this new feature. In that spirit, make sure any randomization in data generation can be made deterministic:
+
+- **Seed your random number generators** (RNGs). Seeding ensures that the RNG outputs the same values in the same order each time you run it, recreating your dataset.
+- **Use invariant hash keys.** [**Hashing**](https://developers.google.com/machine-learning/glossary#hashing) is a common way to split or sample data. You can hash each example, and use the resulting integer to decide in which split to place the example. The inputs to your hash function shouldn't change each time you run the data generation program. Don't use the current time or a random number in your hash, for example, if you want to recreate your hashes on demand.
+
+The preceding approaches apply both to sampling and splitting your data.
+
+### Considerations for hashing
+
+Imagine again you were collecting Search queries and using hashing to include or exclude queries. If the hash key only used the query, then across multiple days of data, you'll either _always_ include that query or _always_ exclude it. Always including or always excluding a query is bad because:
+
+- Your training set will see a less diverse set of queries.
+- Your evaluation sets will be artificially hard, because they won't overlap with your training data. In reality, at serving time, you'll have seen some of the live traffic in your training data, so your evaluation should reflect that.
+
+Instead you can hash on query + query date, which would result in a different hashing for each day.
+
+![[Pasted image 20251207083755.png]]
+**Figure 7.** Hashing on query versus hashing on query + query date.
+
+**Note:** Because these hash keys use the date that the query was logged (rather than the current date), hashing is deterministic. That is, the hash for "Day One" will be the same regardless of when it is generated.
+
+Make your hashing unique to ensure your system doesn't collide with other systems.
+
+# Production ML systems: Questions to ask
+
+This lesson focuses on the questions you should ask about your data and model in production systems.
+
+## Is each feature helpful?
+
+You should continuously monitor your model to remove features that contribute little or nothing to the model's predictive ability. If the input data for that feature abruptly changes, your model's behavior might also abruptly change in undesirable ways.
+
+Also consider the following related question:
+
+- Does the usefulness of the feature justify the cost of including it?
+
+It is always tempting to add more features to the model. For example, suppose you find a new feature whose addition makes your model's predictions slightly better. Slightly better predictions certainly seem better than slightly worse predictions; however, the extra feature adds to your maintenance burden.
+
+## Is your data source reliable?
+
+Some questions to ask about the reliability of your input data:
+
+- Is the signal always going to be available or is it coming from an unreliable source? For example:
+    - Is the signal coming from a server that crashes under heavy load?
+    - Is the signal coming from humans that go on vacation every August?
+- Does the system that computes your model's input data ever change? If so:
+    - How often?
+    - How will you know when that system changes?
+
+Consider creating your own copy of the data you receive from the upstream process. Then, only advance to the next version of the upstream data when you are certain that it is safe to do so.
+
+## Is your model part of a feedback loop?
+
+Sometimes a model can affect its own training data. For example, the results from some models, in turn, become (directly or indirectly) input features to that same model.
+
+Sometimes a model can affect another model. For example, consider two models for predicting stock prices:
+
+- Model A, which is a bad predictive model.
+- Model B.
+
+Since Model A is buggy, it mistakenly decides to buy stock in Stock X. Those purchases drive up the price of Stock X. Model B uses the price of Stock X as an input feature, so Model B can come to some false conclusions about the value of Stock X. Model B could, therefore, buy or sell shares of Stock X based on the buggy behavior of Model A. Model B's behavior, in turn, can affect Model A, possibly triggering a [tulip mania](https://wikipedia.org/wiki/Tulip_mania) or a slide in Company X's stock.
+
+### Exercise: Check your understanding
+
+Which **three** of the following models are susceptible to a feedback loop?
+
+**A traffic-forecasting model that predicts congestion at highway exits near the beach, using beach crowd size as one of its features.**
+*Some beachgoers are likely to base their plans on the traffic forecast. If there is a large beach crowd and traffic is forecast to be heavy, many people may make alternative plans. This may depress beach turnout, resulting in a lighter traffic forecast, which then may increase attendance, and the cycle repeats.*
+
+**A book-recommendation model that suggests novels its users may like based on their popularity (i.e., the number of times the books have been purchased).**
+*Book recommendations are likely to drive purchases, and these additional sales will be fed back into the model as input, making it more likely to recommend these same books in the future.*
+
+A face-attributes model that detects whether a person is smiling in a photo, which is regularly trained on a database of stock photography that is automatically updated monthly.
+
+A housing-value model that predicts house prices, using size (area in square meters), number of bedrooms, and geographic location as features.
+
+**A university-ranking model that rates schools in part by their selectivity—the percentage of students who applied that were admitted.**
+*The model's rankings may drive additional interest to top-rated schools, increasing the number of applications they receive. If these schools continue to admit the same number of students, selectivity will increase (the percentage of students admitted will go down). This will boost these schools' rankings, which will further increase prospective student interest, and so on…*
+
+An election-results model that forecasts the winner of a mayoral race by surveying 2% of voters after the polls have closed.
+
+
+# Production ML Systems: Test Your Knowledge
+
+Let's do a quick test! You must answer at least 4 questions correctly to pass this quiz.
+
+1. ## You are using machine learning to build a classification model that predicts unicorn appearances. Your dataset details 10,000 unicorn appearances and 10,000 unicorn non-appearances. The dataset contains the location, time of day, elevation, temperature, humidity, tree cover, presence of a rainbow, and several other features.  
+      
+    After launching your unicorn appearance predictor, you will need to keep your model fresh by retraining on new data. Because you are gathering too much new data to train on, you decide to limit the training data by sampling the new data over a window of time. You also need to account for daily and annual patterns in unicorn appearances. What window of time do you choose?
+    
+     One day, because a larger window would result in lots of data and your model would take too long to train.
+    
+     One week, so that your dataset is not too large but you can still smooth out patterns.
+    
+     **One year, to ensure that your model is not biased by yearly patterns.**
+     *Correct! You should choose a representative dataset so that your model learns to predict across all scenarios.*
+    
+2. ## You launch your unicorn appearance predictor. It's working well! You go on vacation and return after three weeks to find that your model quality has dropped significantly. Assume that unicorn behavior is unlikely to change significantly in three weeks. What is the most likely explanation for the decrease in quality?
+    
+     **Training-serving skew: the format of the serving data gradually changed at some point after the model started serving.**
+     *While unicorn behavior probably didn't change, perhaps the underlying data reporting or data formatting changed in the serving data after the training data was collected. You can detect potential training-serving skew by checking the serving data against the data schema of the training data.*
+    
+     You used accuracy as a metric during training.
+    
+     Your model is stale.
+    
+     None of the above.
+    
+3. ## You review the model's predictions for Antarctica, and discover the model has been making poor predictions there since the model was released into production. Which of the following could be the source of the problem?
+    
+     **You didn't have enough training examples for Antarctica.**
+     *Because your model didn't include sufficient training examples for Antarctica, it didn't learn the unique patterns of unicorn behavior on the continent, and was unable to make accurate predictions there.*
+    
+     You used dynamic training instead of static training.
+    
+     Your model has become stale.
+    
+     All of the above.
+    
+4. ## Your unicorn appearance predictor has operated for a year. You've fixed many problems, and quality is now high. However, you notice a small but persistent problem. Your model quality has drifted slightly lower in urban areas. What might be the cause?
+    
+     **The high quality of your predictions lead users to easily find unicorns, affecting unicorn appearance behavior itself.**
+     *Unicorns responded to increased attention by changing their behavior in urban areas. As your model's predictions adapt to the changing behavior, unicorns continue to change their behavior. Such a situation, where your model's behavior affects the training data itself, is called a feedback loop. You should try modifying your training-serving skew detection to detect changes in serving data that correspond to changes in unicorn behavior.*
+    
+     Urban areas are difficult to model.
+    
+     Unicorn appearances are reported multiple times in heavily populated areas, skewing your training data.
+    
+5. ## Through all your troubleshooting, you've greatly improved the quality of the unicorn model's predictions, and as a result, usage has increased tenfold. However, users are now complaining that the model is extremely slow; inference requests typically take more than 30 seconds to return predictions. Which of the following changes could help solve this problem?
+    
+     Switch the model from dynamic training to static training.
+    
+     **Switch the model from dynamic inference to static inference.**
+     *Switching to static inference means the model's predictions will be cached, so they can be served to users with very low latency. However, a model that uses static inference can only return these cached predictions, so it may not be able to provide predictions for uncommon inputs it hasn't seen before.*
+    
+     Validate the model quality before serving.
+    
+     None of the above solutions would help.

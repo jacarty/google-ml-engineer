@@ -1,0 +1,264 @@
+
+# Embeddings
+
+**Learning objectives**
+
+- Visualize vector representations of word embeddings, such as [word2vec](https://wikipedia.org/wiki/Word2vec).
+- Distinguish encoding from embedding.
+- Describe contextual embedding.
+
+Imagine you're developing a food-recommendation application, where users input their favorite meals, and the app suggests similar meals that they might like. You want to develop a machine learning (ML) model that can predict food similarity, so your app can make high quality recommendations ("Since you like pancakes, we recommend crepes").
+
+To train your model, you curate a dataset of 5,000 popular meal items, including borscht, hot dog, salad, pizza, and shawarma.
+
+![[Pasted image 20251130141449.png]]
+**Figure 1.** Sampling of meal items included in the food dataset.
+
+You create a `meal` feature that contains a [**one-hot encoded**](https://developers.google.com/machine-learning/glossary#one-hot-encoding) representation of each of the meal items in the dataset. [**Encoding**](https://developers.google.com/machine-learning/glossary#encoder) refers to the process of choosing an initial numerical representation of data to train the model on.
+
+![[Pasted image 20251130141519.png]]
+**Figure 2.** One-hot encodings of borscht, hot dog, and shawarma. Each one-hot encoding vector has a length of 5,000 (one entry for each menu item in the dataset). The ellipsis in the diagram represents the 4,995 entries not shown.
+
+## Pitfalls of sparse data representations
+
+Reviewing these one-hot encodings, you notice several problems with this representation of the data.
+
+- **Number of weights.** Large input vectors mean a huge number of [**weights**](https://developers.google.com/machine-learning/glossary#weight) for a [**neural network**](https://developers.google.com/machine-learning/glossary#neural-network). With M entries in your one-hot encoding, and N nodes in the first layer of the network after the input, the model has to train MxN weights for that layer.
+- **Number of datapoints.** The more weights in your model, the more data you need to train effectively.
+- **Amount of computation.** The more weights, the more computation required to train and use the model. It's easy to exceed the capabilities of your hardware.
+- **Amount of memory.** The more weights in your model, the more memory that is needed on the accelerators that train and serve it. Scaling this up efficiently is very difficult.
+- **Difficulty of supporting on-device machine learning (ODML).** If you're hoping to run your ML model on local devices (as opposed to serving them), you'll need to be focused on making your model smaller, and will want to decrease the number of weights.
+
+In this module, you'll learn how to create **embeddings**, lower-dimensional representations of sparse data, that address these issues.
+
+# Embeddings: Embedding space and static embeddings
+
+An [**embedding**](https://developers.google.com/machine-learning/glossary#embedding-vector) is a vector representation of data in [**embedding space**](https://developers.google.com/machine-learning/glossary#embedding-space). Generally speaking, a model finds potential embeddings by projecting the high-dimensional space of initial data vectors into a lower-dimensional space. For a discussion of high-dimensional versus low-dimensional data, see the [Categorical Data](https://developers.google.com/machine-learning/crash-course/categorical-data/one-hot-encoding) module.
+
+Embeddings make it easier to do machine learning on large [**feature vectors**](https://developers.google.com/machine-learning/glossary#feature-vector), such as the sparse vectors representing meal items discussed in the [previous section](https://developers.google.com/machine-learning/crash-course/embeddings). Sometimes the relative positions of items in embedding space have a potential semantic relationship, but often the process of finding a lower-dimensional space, and relative positions in that space, is not interpretable by humans, and the resulting embeddings are difficult to understand.
+
+Still, for the sake of human understanding, to give an idea of how embedding vectors represent information, consider the following one-dimensional representation of the dishes hot dog, pizza, salad, shawarma, and borscht, on a scale of "least like a sandwich" to "most like a sandwich." The single dimension is an imaginary measure of "sandwichness."
+
+![[Pasted image 20251130142130.png]]
+**Figure 3.** Foods along an imagined dimension of "sandwichness."
+
+Where on this line would an apple strudel fall? Arguably, it could be placed between `hot dog` and `shawarma`. But apple strudel also seems to have an additional dimension of _sweetness_ or _dessertness_ that makes it very different from the other options. The following figure visualizes this by adding a "dessertness" dimension:
+
+![[Pasted image 20251130142148.png]]
+**Figure 4.** Foods plotted by both "sandwichness" and "dessertness."
+
+An embedding represents each item in _n_-dimensional space with _n_ floating-point numbers (typically in the range –1 to 1 or 0 to 1). The embedding in Figure 3 represents each food in one-dimensional space with a single coordinate, while Figure 4 represents each food in two-dimensional space with two coordinates. In Figure 4, "apple strudel" is in the upper-right quadrant of the graph and could be assigned the point (0.5, 0.3), whereas "hot dog" is in the bottom-right quadrant of the graph and could be assigned the point (0.2, –0.5).
+
+In an embedding, the distance between any two items can be calculated mathematically, and can be interpreted as a measure of relative similarity between those two items. Two things that are close to each other, like `shawarma` and `hot dog` in Figure 4, are more closely related in the model's representation of the data than two things more distant from each other, like `apple strudel` and `borscht`.
+
+To learn about different methods of calculating distance between embedding vectors, see [Measuring Similarity from Embeddings](https://developers.google.com/machine-learning/clustering/dnn-clustering/supervised-similarity).
+
+Notice also that in the 2D space in Figure 4, `apple strudel` is much farther from `shawarma` and `hot dog` than it would be in the 1D space, which matches intuition: `apple strudel` is not as similar to a hot dog or a shawarma as hot dogs and shawarmas are to each other.
+
+Now consider borscht, which is much more liquid than the other items. This suggests a third dimension, _liquidness_, or how liquid a food might be. Adding that dimension, the items could be visualized in 3D in this way:
+
+![[Pasted image 20251130142211.png]]
+**Figure 5.** Foods plotted by "sandwichness," "dessertness," and "liquidness."
+
+Where in this 3D space would tangyuan go? It's soupy, like borscht, and a sweet dessert, like apple strudel, and most definitely not a sandwich. Here is one possible placement:
+
+![[Pasted image 20251130142229.png]]
+**Figure 6.** Adding tangyuan to the previous image, high on "dessertness" and "liquidness" and low on "sandwichness."
+
+Notice how much information is expressed in these three dimensions. You could imagine adding additional dimensions, like how meaty or baked a food might be, though 4D, 5D, and higher-dimensional spaces are difficult to visualize.
+
+## Real-world embedding spaces
+
+In the real world, embedding spaces are _d_-dimensional, where _d_ is much higher than 3, though lower than the dimensionality of the data, and relationships between data points are not necessarily as intuitive as in the contrived illustration above. (For word embeddings, _d_ is often 256, 512, or 1024.[1](https://developers.google.com/machine-learning/crash-course/embeddings/embedding-space#fn1))
+
+In practice, the ML practitioner usually sets the specific task and the number of embedding dimensions. The model then tries to arrange the training examples to be close in an embedding space with the specified number of dimensions, or tunes for the number of dimensions, if _d_ is not fixed. The individual dimensions are rarely as understandable as "dessertness" or "liquidness." Sometimes what they "mean" can be inferred but this is not always the case.
+
+Embeddings will usually be specific to the task, and differ from each other when the task differs. For example, the embeddings generated by a vegetarian versus non-vegetarian classification model will be different from the embeddings generated by a model that suggests dishes based on time of day or season. "Cereal" and "breakfast sausage" would probably be close together in the embedding space of a time-of-day model but far apart in the embedding space of a vegetarian versus non-vegetarian model, for example.
+
+## Static embeddings
+
+While embeddings differ from task to task, one task has some general applicability: predicting the context of a word. Models trained to predict the context of a word assume that words appearing in similar contexts are semantically related. For example, training data that includes the sentences "They rode a burro down into the Grand Canyon" and "They rode a horse down into the canyon" suggests that "horse" appears in similar contexts to "burro." It turns out that embeddings based on semantic similarity work well for many general language tasks.
+
+While it's an older example, and largely superseded by other models, the **word2vec** model remains useful for illustration. `word2vec` trains on a corpus of documents to obtain a single global embedding per word. When each word or data point has a single embedding vector, this is called a **static embedding**. The following video walks through a simplified illustration of `word2vec` training.
+
+**Note**: **word2vec** can refer to both an algorithm for obtaining static word embeddings and a set of word vectors that were pretrained with that algorithm. It's used in both senses in this module.
+
+![[Pasted image 20251130160219.png]]
+![[Pasted image 20251130160133.png]]
+
+Research suggests that these static embeddings, once trained, encode some degree of semantic information, particularly in relationships between words. That is, words that are used in similar contexts will be closer to each other in embedding space. The specific embeddings vectors generated will depend on the corpus used for training. See T. Mikolov et al (2013), ["Efficient estimation of word representations in vector space"](https://arxiv.org/abs/1301.3781), for details.
+
+# Embeddings: Interactive exercises
+
+The following widget, based on TensorFlow's [Embedding Projector](https://projector.tensorflow.org/), flattens 10,000 `word2vec` static vectors into a 3D space. This collapse of dimensions can be misleading, because the points closest to each other in the original high-dimensional space may appear farther apart in the 3D projection. The closest _n_ points are highlighted in purple, with _n_ chosen by the user in **Isolate __ points**. The sidebar on the right identifies those nearest neighbors.
+
+In these experiments, you'll play with the `word2vec` embeddings in the widget above.
+
+## Task 1
+
+Try to find the 20 nearest neighbors for the following, and see where the groups fall in the cloud.
+
+- `iii`, `third`, and `three`
+- `tao` and `way`
+- `orange`, `yellow`, and `juice`
+
+What do you notice about these results?
+![[Pasted image 20251201124153.png]]
+![[Pasted image 20251201124216.png]]
+![[Pasted image 20251201124243.png]]
+
+**Click here for our answer**
+
+Even though `iii`, `third`, and `three` are semantically similar, they appear in different contexts in text and don't appear to be close together in this embedding space. In `word2vec`, `iii` is closer to `iv` than to `third`.
+
+Similarly, while `way` is a direct translation of `tao`, these words most frequently occur with completely different groups of words in the dataset used, and so the two vectors are very far apart.
+
+The first several nearest neighbors of `orange` are colors, but `juice` and `peel`, related to the meaning of `orange` as fruit, show up as the 14th and 18th nearest neighbors. `prince`, meanwhile, as in the Prince of Orange, is 17th. In the projection, the words closest to `orange` are `yellow` and other colors, while the closest words to `juice` don't include `orange`.
+
+## Task 2
+
+Try to figure out some characteristics of the training data. For example, try to find the 100 nearest neighbors for the following, and see where the groups are in the cloud:
+
+- `boston`, `paris`, `tokyo`, `delhi`, `moscow`, and `seoul` (this is a trick question)
+- `jane`, `sarah`, `john`, `peter`, `rosa`, and `juan`
+
+![[Pasted image 20251201124535.png]]
+**Click here for our answer**
+
+Many of the nearest neighbors to `boston` are other cities in the US. Many of the nearest neighbors to `paris` are other cities in Europe. `tokyo` and `delhi` don't seem to have similar results: one is associated with cities around the world that are travel hubs, while the other is associated with `india` and related words. `seoul` doesn't appear in this trimmed-down set of word vectors at all.
+
+It seems that this dataset contains many documents related to US national geography, some documents relate to European regional geography, and not much fine-grained coverage of other countries or regions.
+
+Similarly, this dataset seems to contain many male English names, some female English names, and far fewer names from other languages. Note that Don Rosa wrote and illustrated Scrooge McDuck comics for Disney, which is the likely reason that `scrooge` and `mcduck` are among the nearest neighbors for `rosa`.
+
+The pre-trained word vectors offered by `word2vec` were in fact trained on [Google News articles up to 2013](https://code.google.com/archive/p/word2vec/).
+
+## Task 3
+
+Embeddings aren't limited to words. Images, audio, and other data can also be embedded. For this task:
+
+1. Open TensorFlow's [Embedding Projector](https://projector.tensorflow.org/).
+2. In the left sidebar titled **Data**, choose **Mnist with images**. This brings up a projection of the embeddings of the [MNIST](https://developers.google.com/machine-learning/glossary#mnist) database of handwritten digits.
+3. Click to stop the rotation and choose a single image. Zoom in and out as needed.
+4. Look in the right sidebar for nearest neighbors. Are there any surprises?
+
+- Why do some `7`s have `1`s as their nearest neighbor? Why do some `8`s have `9` as their nearest neighbor?
+- Is there anything about the images on the edges of the projection space that seem different from the images in the center of the projection space?
+
+Keep in mind that the model that created these embeddings is receiving image data, which is to say, pixels, and choosing a numerical vector representation for each image. The model doesn't make an automatic mental association between the image of the handwritten digit and the numerical digit itself.
+
+**Click here for our answer**
+
+Due to similarities in shape, the vector representations of some of the skinnier, narrower `7`s are placed closer to the vectors for handwritten `1`s. The same thing happens for some `8`s and `9`s, and even some of the `5`s and `3`s.
+
+The handwritten digits on the outside of the projection space appear more strongly definable as one of the nine digits and strongly differentiated from other possible digits.
+
+# Embeddings: Obtaining embeddings
+
+This section covers several means of obtaining embeddings, as well as how to transform static embeddings into contextual embeddings.
+
+## Dimensionality reduction techniques
+
+There are many mathematical techniques that capture the important structures of a high-dimensional space in a low-dimensional space. In theory, any of these techniques can be used to create an embedding for a machine learning system.
+
+For example, [principal component analysis](https://wikipedia.org/wiki/Principal_component_analysis) (PCA) has been used to create word embeddings. Given a set of instances like [**bag of words**](https://developers.google.com/machine-learning/glossary#bag-of-words) vectors, PCA tries to find highly correlated dimensions that can be collapsed into a single dimension.
+
+## Training an embedding as part of a neural network
+
+You can create an embedding while training a [**neural network**](https://developers.google.com/machine-learning/crash-course/neural-networks) for your target task. This approach gets you an embedding well customized for your particular system, but may take longer than training the embedding separately.
+
+In general, you can create a hidden layer of size _d_ in your neural network that is designated as the [**embedding layer**](https://developers.google.com/machine-learning/glossary#embedding-layer), where _d_ represents both the number of nodes in the hidden layer and the number of dimensions in the embedding space. This embedding layer can be combined with any other features and hidden layers. As in any deep neural network, the parameters will be optimized during training to minimize loss on the nodes in the network's output layer.
+
+Returning to our [food recommendation example](https://developers.google.com/machine-learning/crash-course/embeddings), our goal is to predict new meals a user will like based on their current favorite meals. First, we can compile additional data on our users' top five favorite foods. Then, we can model this task as a supervised learning problem. We set four of these top five foods to be feature data, and then randomly set aside the fifth food as the positive label that our model aims to predict, optimizing the model's predictions using a [**softmax**](https://developers.google.com/machine-learning/glossary#softmax) loss.
+
+During training, the neural network model will learn the optimal weights for the nodes in the first hidden layer, which serves as the embedding layer. For example, if the model contains three nodes in the first hidden layer, it might determine that the three most relevant dimensions of food items are sandwichness, dessertness, and liquidness. Figure 12 shows the one-hot encoded input value for "hot dog" transformed into a three-dimensional vector.
+
+![[Pasted image 20251202181444.png]]
+**Figure 12.** A one-hot encoding of `hot dog` provided as input to a deep neural network. An embedding layer translates the one-hot encoding into the three-dimensional embedding vector `[2.98, -0.75, 0]`.
+
+In the course of training, the weights of the embedding layer will be optimized so that the [**embedding vectors**](https://developers.google.com/machine-learning/glossary#embedding-vector) for similar examples are closer to each other. As previously mentioned, the dimensions that an actual model chooses for its embeddings are unlikely to be as intuitive or understandable as in this example.
+
+## Contextual embeddings
+
+One limitation of `word2vec` static embedding vectors is that words can mean different things in different contexts. "Yeah" means one thing on its own, but the opposite in the phrase "Yeah, right." "Post" can mean "mail," "to put in the mail," "earring backing," "marker at the end of a horse race," "postproduction," "pillar," "to put up a notice," "to station a guard or soldier," or "after," among other possibilities.
+
+However, with static embeddings, each word is represented by a single point in vector space, even though it may have a variety of meanings. In the [last exercise](https://developers.google.com/machine-learning/crash-course/embeddings/embedding-space#exercise), you discovered the limitations of static embeddings for the word _orange,_ which can signify either a color or a type of fruit. With only one static embedding, _orange_ will always be closer to other colors than to _juice_ when trained on the `word2vec` dataset.
+
+**Contextual embeddings** were developed to address this limitation. Contextual embeddings allow a word to be represented by multiple embeddings that incorporate information about the surrounding words as well as the word itself. _Orange_ would have a different embedding for every unique sentence containing the word in the dataset.
+
+Some methods for creating contextual embeddings, like [ELMo](https://wikipedia.org/wiki/ELMo), take the static embedding of an example, such as the `word2vec` vector for a word in a sentence, and transform it by a function that incorporates information about the words around it. This produces a contextual embedding.
+
+**Click here for details on contextual embeddings**
+- For ELMo models specifically, the static embedding is aggregated with embeddings taken from other layers, which encode front-to-back and back-to-front readings of the sentence.
+- [BERT](https://developers.google.com/machine-learning/glossary#bert-bidirectional-encoder-representations-from-transformers) models mask part of the sequence that the model takes as input.
+- Transformer models use a [self-attention](https://developers.google.com/machine-learning/glossary#self-attention-also-called-self-attention-layer) layer to weight the relevance of the other words in a sequence to each individual word. They also add the relevant column from a **positional embedding matrix** (see [positional encoding](https://developers.google.com/machine-learning/glossary#positional-encoding)) to each previously learned token embedding, element by element, to produce the input embedding that is fed into the rest of the model for inference. This **input embedding**, unique to each distinct textual sequence, is a contextual embedding.
+
+While the models described above are language models, contextual embeddings are useful in other generative tasks, like images. An embedding of the pixel RGB values in a photo of a horse provides more information to the model when combined with a positional matrix representing each pixel and some encoding of the neighboring pixels, creating contextual embeddings, than the original static embeddings of the RGB values alone.
+
+- ## Which of the following would be good candidates for an embedding? (Choose all that apply)
+    
+    Choose as many answers as you see fit.
+    
+     Daily high temperatures for Tokyo, Japan from 1999–2024.
+    
+     **Genomic sequences of simple viruses.**
+    
+    One way of approaching this problem would be to consider each genome a document and each nucleotide a token.
+    
+     **A large dataset of high-definition photos of horses.**
+    
+    Each photograph would have, at minimum, the total number of pixels as the number of dimensions in an encoding vector. There is almost certainly a lower-dimensional way to represent that information, particularly when the subjects have shapes, colors, and patterns in common.
+    
+     **Lines of code in a large software project.**
+    
+    Code lines are also a good candidate for an embedding, because the data is categorical and sparse.
+    
+- ## You encode a database of 100px by 100px black-and-white images of handwritten digits as vectors representing the pixels in the image: 0 for white and 1 for black. If you create an embedding from this encoding, roughly how many dimensions will your embedding have?
+    
+     10,000 dimensions
+    
+     Greater than 10,000 dimensions
+    
+     **Fewer than 10,000 dimensions**
+    
+    In the question, we encode each image of 10,000 pixels as a vector 10,000 elements long, so the encoded data has 10,000 dimensions. Embeddings translate high-dimensional data into a lower-dimensional space, so the embedding will have far fewer dimensions than the sparse vectors.
+    
+- ## Which of the following are benefits of using embedding vectors for feature data over one-hot vectors of the same data? (Choose all that apply)
+    
+    Choose as many answers as you see fit.
+    
+     **A model using embedding vectors will have fewer weights to tune during training.**
+    
+    The embedding vector will have fewer dimensions than the one-hot vectors, which means fewer weights.
+    
+     **Training the model will be faster and cheaper when using embedding vectors.**
+    
+    Because the model requires fewer weights when using embedding vectors, training will be require less computation.
+    
+     A model trained on the embeddings does not need to be evaluated with a test set.
+    
+     Dimensionality of the data will increase when using embedding vectors, improving model performance.
+    
+- ## True or False: Weights taken from a hidden layer of a trained neural network can be used as an embedding.
+    
+     **True**
+    
+    You can choose any of a neural network's hidden layers, though preferably one with fewer dimensions than the input data, and use the weights from that layer as an embedding vector.
+    
+     False
+     
+ - ## In what ways does a contextual embedding differ from a static embedding? (Choose all that apply)
+    
+    Choose as many answers as you see fit.
+    
+     **Contextual embeddings encode positional information, while static embeddings do not.**
+    
+    Whether by incorporating a front-to-back and back-to-front reading of the data, or a positional matrix, contextual embeddings generally transform static embeddings by some function that encodes token position.
+    
+     **One token is represented by one static embedding, but can be represented by multiple contextual embeddings.**
+    
+    Because contextual embeddings incorporate positional information, one token can have multiple contextual embedding vectors. Static embeddings only allow a single representation of each token.
+    
+     Contextual embeddings have a lower computational cost when compared to static embeddings.
+    
+     Static embeddings allow for semantically meaningful mathematical operations between vectors in all use cases, while contextual embeddings do not.

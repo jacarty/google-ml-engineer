@@ -1,0 +1,329 @@
+# What is Machine Learning?
+
+## AI-generated Key Takeaways
+
+Machine learning (ML) powers some of the most important technologies we use, from translation apps to autonomous vehicles. This course explains the core concepts behind ML.
+
+ML offers a new way to solve problems, answer complex questions, and create new content. ML can predict the weather, estimate travel times, recommend songs, auto-complete sentences, summarize articles, and generate never-seen-before images.
+
+In basic terms, ML is the process of [training](https://developers.google.com/machine-learning/glossary#training) a piece of software, called a [model](https://developers.google.com/machine-learning/glossary#model), to make useful [predictions](https://developers.google.com/machine-learning/glossary#prediction) or generate content (like text, images, audio, or video) from data.
+
+For example, suppose we wanted to create an app to predict rainfall. We could use either a traditional approach or an ML approach. Using a traditional approach, we'd create a physics-based representation of the Earth's atmosphere and surface, computing massive amounts of fluid dynamics equations. This is incredibly difficult.
+
+Using an ML approach, we would give an ML model enormous amounts of weather data until the ML model eventually _learned_ the mathematical relationship between weather patterns that produce differing amounts of rain. We would then give the model the current weather data, and it would predict the amount of rain.
+
+### Check Your Understanding
+
+What is a "model" in machine learning?
+
+A model is a mathematical relationship derived from data that an ML system uses to make predictions
+
+## Types of ML Systems
+
+ML systems fall into one or more of the following categories based on how they learn to make predictions or generate content:
+
+- Supervised learning
+- Unsupervised learning
+- Reinforcement learning
+- Generative AI
+
+## Supervised learning
+
+[Supervised learning](https://developers.google.com/machine-learning/glossary#supervised-machine-learning) models can make predictions after seeing lots of data with the correct answers and then discovering the connections between the elements in the data that produce the correct answers. This is like a student learning new material by studying old exams that contain both questions and answers. Once the student has trained on enough old exams, the student is well prepared to take a new exam. These ML systems are "supervised" in the sense that a human gives the ML system data with the known correct results.
+
+Two of the most common use cases for supervised learning are regression and classification.
+
+### Regression
+
+A [regression model](https://developers.google.com/machine-learning/glossary#regression-model) predicts a numeric value. For example, a weather model that predicts the amount of rain, in inches or millimeters, is a regression model.
+
+See the table below for more examples of regression models:
+
+|Scenario|Possible input data|Numeric prediction|
+|---|---|---|
+|Future house price|Square footage, zip code, number of bedrooms and bathrooms, lot size, mortgage interest rate, property tax rate, construction costs, and number of homes for sale in the area.|The price of the home.|
+|Future ride time|Historical traffic conditions (gathered from smartphones, traffic sensors, ride-hailing and other navigation applications), distance from destination, and weather conditions.|The time in minutes and seconds to arrive at a destination.|
+
+### Classification
+
+[Classification models](https://developers.google.com/machine-learning/glossary#classification-model) predict the likelihood that something belongs to a category. Unlike regression models, whose output is a number, classification models output a value that states whether or not something belongs to a particular category. For example, classification models are used to predict if an email is spam or if a photo contains a cat.
+
+Classification models are divided into two groups: binary classification and multiclass classification. Binary classification models output a value from a class that contains only two values, for example, a model that outputs either `rain` or `no rain`. Multiclass classification models output a value from a class that contains more than two values, for example, a model that can output either `rain`, `hail`, `snow`, or `sleet`.
+
+### Check Your Understanding
+
+If you wanted to use an ML model to predict energy usage for commercial buildings, what type of model would you use?
+
+Regression
+
+## Unsupervised learning
+
+[Unsupervised learning](https://developers.google.com/machine-learning/glossary#unsupervised-machine-learning) models make predictions by being given data that does not contain any correct answers. An unsupervised learning model's goal is to identify meaningful patterns among the data. In other words, the model has no hints on how to categorize each piece of data, but instead it must infer its own rules.
+
+A commonly used unsupervised learning model employs a technique called [clustering](https://developers.google.com/machine-learning/glossary#clustering). The model finds data points that demarcate natural groupings.
+
+![An image showing colored dots in clusters.](https://developers.google.com/static/machine-learning/intro-to-ml/images/clustering-02.png)
+
+**Figure 1**. An ML model clustering similar data points.
+
+![An image showing colored dots in clusters that are enclosed in a shape and border each other.](https://developers.google.com/static/machine-learning/intro-to-ml/images/clustering-04.png)
+
+**Figure 2**. Groups of clusters with natural demarcations.
+
+Clustering differs from classification because the categories aren't defined by you. For example, an unsupervised model might cluster a weather dataset based on temperature, revealing segmentations that define the seasons. You might then attempt to name those clusters based on your understanding of the dataset.
+
+![An image showing colored dots in clusters that are labeled as snow, rain, hail, and no rain.](https://developers.google.com/static/machine-learning/intro-to-ml/images/clustering-01.png)
+
+**Figure 3**. An ML model clustering similar weather patterns.
+
+![An image showing colored dots in clusters that are labeled as snow, rain, hail, and no rain that are enclosed in a shape and border each other.](https://developers.google.com/static/machine-learning/intro-to-ml/images/clustering-03.png)
+
+**Figure 4**. Clusters of weather patterns labeled as snow, sleet, rain, and no rain.
+
+### Check Your Understanding
+
+What distinguishes a supervised approach from an unsupervised approach?
+
+A supervised approach is given data that contains the correct answer.
+
+
+## Reinforcement learning
+
+[Reinforcement learning](https://developers.google.com/machine-learning/glossary#reinforcement-learning-rl) models make predictions by getting [rewards](https://developers.google.com/machine-learning/glossary#reward) or penalties based on actions performed within an environment. A reinforcement learning system generates a [policy](https://developers.google.com/machine-learning/glossary#policy) that defines the best strategy for getting the most rewards.
+
+Reinforcement learning is used to train robots to perform tasks, like walking around a room, and software programs like [AlphaGo](https://deepmind.com/research/case-studies/alphago-the-story-so-far) to play the game of Go.
+
+## Generative AI
+
+[Generative AI](https://developers.google.com/machine-learning/glossary#generative-ai) is a class of models that creates content from user input. For example, generative AI can create unique images, music compositions, and jokes; it can summarize articles, explain how to perform a task, or edit a photo.
+
+Generative AI can take a variety of inputs and create a variety of outputs, like text, images, audio, and video. It can also take and create combinations of these. For example, a model can take an image as input and create an image and text as output, or take an image and text as input and create a video as output.
+
+We can discuss generative models by their inputs and outputs, typically written as "type of input"-to-"type of output." For example, the following is a partial list of some inputs and outputs for generative models:
+
+- Text-to-text
+- Text-to-image
+- Text-to-video
+- Text-to-code
+- Text-to-speech
+- Image and text-to-image
+
+The following table contains examples of generative models, their input, and their possible output:
+
+| Model         | Input                                                                                                                                                                                                             | Example output                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Text-to-text  | Who invented the Le Mans race?                                                                                                                                                                                    | The 24 Hours of Le Mans was founded by the Automobile Club de l'Ouest (ACO), a motoring organization founded in 1906. The first race was held on 26 and 27 May 1923 on the Sarthe Circuit, a 13.426-kilometre (8.345-mile) road circuit located near the town of Le Mans in France. The race was originally conceived as a way to promote the ACO and the Sarthe region.  <br>Source: [Bard](https://bard.google.com) |
+| Text-to-image | An alien octopus floats through a portal while reading a newspaper.                                                                                                                                               | ![Image of a cartoon octopus.](https://developers.google.com/static/machine-learning/intro-to-ml/images/octopus.png)  <br>Source: [Imagen](https://imagen.research.google/)                                                                                                                                                                                                                                           |
+| Text-to-video | A photorealistic teddy bear is swimming in the ocean at San Francisco. The teddy bear goes under water. The teddy bear keeps swimming under the water with colorful fishes. A panda bear is swimming under water. | ![Video of a teddy bear swimming underwater.](https://developers.google.com/static/machine-learning/intro-to-ml/images/teddy_bear.gif)  <br>Source: [Phenaki](https://phenaki.video/)                                                                                                                                                                                                                                 |
+| Text-to-code  | Write a Python loop that loops over a list of numbers and prints the prime numbers.                                                                                                                               | for number in numbers:<br>  # Check if the number is prime.<br>  is_prime = True<br>  for i in range(2, number):<br>    if number % i == 0:<br>        is_prime = False<br>        break<br>  # If the number is prime, print it.<br>  if is_prime:<br>    print(number)                                                                                                                                              |
+
+
+
+How does generative AI work? At a high-level, generative models learn patterns in data with the goal to produce new but similar data. Generative models are like the following:
+
+- Comedians who learn to imitate others by observing people's behaviors and style of speaking
+- Artists who learn to paint in a particular style by studying lots of paintings in that style
+- Cover bands that learn to sound like a specific music group by listening to lots of music by that group
+
+To produce unique and creative outputs, generative models are initially trained using an unsupervised approach, where the model learns to mimic the data it's trained on. The model is sometimes trained further using supervised or reinforcement learning on specific data related to tasks the model might be asked to perform, for example, summarize an article or edit a photo.
+
+Generative AI is a quickly evolving technology with new use cases constantly being discovered. For example, generative models are helping businesses refine their ecommerce product images by automatically removing distracting backgrounds or improving the quality of low-resolution images.
+
+# Supervised Learning
+
+## AI-generated Key Takeaways
+
+Supervised learning's tasks are well-defined and can be applied to a multitude of scenarios—like identifying spam or predicting precipitation.
+
+## Foundational supervised learning concepts
+
+Supervised machine learning is based on the following core concepts:
+
+- Data
+- Model
+- Training
+- Evaluating
+- Inference
+
+### Data
+
+Data is the driving force of ML. Data comes in the form of words and numbers stored in tables, or as the values of pixels and waveforms captured in images and audio files. We store related data in datasets. For example, we might have a dataset of the following:
+
+- Images of cats
+- Housing prices
+- Weather information
+
+Datasets are made up of individual [examples](https://developers.google.com/machine-learning/glossary#example) that contain [features](https://developers.google.com/machine-learning/glossary#feature) and a [label](https://developers.google.com/machine-learning/glossary#label). You could think of an example as analogous to a single row in a spreadsheet. Features are the values that a supervised model uses to predict the label. The label is the "answer," or the value we want the model to predict. In a weather model that predicts rainfall, the features could be _latitude_, _longitude_, _temperature_, _humidity_, _cloud coverage_, _wind direction_, and _atmospheric pressure_. The label would be _rainfall amount_.
+
+Examples that contain both features and a label are called [labeled examples](https://developers.google.com/machine-learning/glossary#labeled-example).
+
+**Two labeled examples**
+
+![Placeholder image.](https://developers.google.com/static/machine-learning/intro-to-ml/images/labeled_example.png)
+
+In contrast, unlabeled examples contain features, but no label. After you create a model, the model predicts the label from the features.
+
+**Two unlabeled examples**
+
+![Placeholder image.](https://developers.google.com/static/machine-learning/intro-to-ml/images/unlabeled_example.png)
+
+### Dataset characteristics
+
+A dataset is characterized by its size and diversity. Size indicates the number of examples. Diversity indicates the range those examples cover. Good datasets are both large and highly diverse.
+
+Datasets can be large and diverse, or large but not diverse, or small but highly diverse. In other words, a large dataset doesn't guarantee sufficient diversity, and a dataset that is highly diverse doesn't guarantee sufficient examples.
+
+For instance, a dataset might contain 100 years worth of data, but only for the month of July. Using this dataset to predict rainfall in January would produce poor predictions. Conversely, a dataset might cover only a few years but contain every month. This dataset might produce poor predictions because it doesn't contain enough years to account for variability.
+
+### Check Your Understanding
+
+What attributes of a dataset would be ideal to use for ML?
+
+Large size / High diversity
+
+A dataset can also be characterized by the number of its features. For example, some weather datasets might contain hundreds of features, ranging from satellite imagery to cloud coverage values. Other datasets might contain only three or four features, like humidity, atmospheric pressure, and temperature. Datasets with more features can help a model discover additional patterns and make better predictions. However, datasets with more features don't _always_ produce models that make better predictions because some features might have no causal relationship to the label.
+
+### Model
+
+In supervised learning, a model is the complex collection of numbers that define the mathematical relationship from specific input feature patterns to specific output label values. The model discovers these patterns through training.
+
+### Training
+
+Before a supervised model can make predictions, it must be trained. To train a model, we give the model a dataset with labeled examples. The model's goal is to work out the best solution for predicting the labels from the features. The model finds the best solution by comparing its predicted value to the label's actual value. Based on the difference between the predicted and actual values—defined as the [loss](https://developers.google.com/machine-learning/glossary#loss)—the model gradually updates its solution. In other words, the model learns the mathematical relationship between the features and the label so that it can make the best predictions on unseen data.
+
+For example, if the model predicted `1.15 inches` of rain, but the actual value was `.75 inches`, the model modifies its solution so its prediction is closer to `.75 inches`. After the model has looked at each example in the dataset—in some cases, multiple times—it arrives at a solution that makes the best predictions, on average, for each of the examples.
+
+The following demonstrates training a model:
+
+1. The model takes in a single labeled example and provides a prediction.
+    
+    ![An image of a model making a prediction.](https://developers.google.com/static/machine-learning/intro-to-ml/images/training-a-model-01.png)
+    
+    **Figure 1**. An ML model making a prediction from a labeled example.
+    
+2. The model compares its predicted value with the actual value and updates its solution.
+    
+    ![An image of a model comparing its prediction with actual value.](https://developers.google.com/static/machine-learning/intro-to-ml/images/training-a-model-02.png)
+    
+    **Figure 2**. An ML model updating its predicted value.
+    
+3. The model repeats this process for each labeled example in the dataset.
+    
+    ![An image of a model repeating the process of its prediction versus the actual value.](https://developers.google.com/static/machine-learning/intro-to-ml/images/training-a-model-03.png)
+    
+    **Figure 3**. An ML model updating its predictions for each labeled example in the training dataset.
+    
+
+In this way, the model gradually learns the correct relationship between the features and the label. This gradual understanding is also why large and diverse datasets produce a better model. The model has seen more data with a wider range of values and has refined its understanding of the relationship between the features and the label.
+
+During training, ML practitioners can make subtle adjustments to the configurations and features the model uses to make predictions. For example, certain features have more predictive power than others. Therefore, ML practitioners can select which features the model uses during training. For example, suppose a weather dataset contains`time_of_day` as a feature. In this case, an ML practitioner can add or remove `time_of_day` during training to see whether the model makes better predictions with or without it.
+
+### Evaluating
+
+We evaluate a trained model to determine how well it learned. When we evaluate a model, we use a labeled dataset, but we only give the model the dataset's features. We then compare the model's predictions to the label's true values.
+
+![An image showing a trained model having its predictions compared against actual values.](https://developers.google.com/static/machine-learning/intro-to-ml/images/evaluating-a-model.png)
+
+**Figure 4**. Evaluating an ML model by comparing its predictions to the actual values.
+
+Depending on the model's predictions, we might do more training and evaluating before deploying the model in a real-world application.
+
+### Check Your Understanding
+
+Why does a model need to be trained before it can make predictions?
+
+A model needs to be trained to learn the mathematical relationship between the features and the label in a dataset.
+
+### Inference
+
+Once we're satisfied with the results from evaluating the model, we can use the model to make predictions, called [inferences](https://developers.google.com/machine-learning/glossary#inference), on unlabeled examples. In the weather app example, we would give the model the current weather conditions—like temperature, atmospheric pressure, and relative humidity—and it would predict the amount of rainfall.
+
+# Test Your Understanding
+
+## AI-generated Key Takeaways
+
+The following questions help you solidify your understanding of core ML concepts.
+
+## Predictive power
+
+Supervised ML models are trained using datasets with labeled examples. The model learns how to predict the label from the features. However, not every feature in a dataset has predictive power. In some instances, only a few features act as predictors of the label. In the dataset below, use price as the label and the remaining columns as the features.
+
+![An labeled example of automobile attributes.](https://developers.google.com/static/machine-learning/intro-to-ml/images/predictive_power.png)
+
+Which three features do you think are likely the greatest predictors for a car's price?
+
+Make_model, year, miles.
+
+A car's make/model, year, and miles are likely to be among the strongest predictors for its price.
+
+
+## Supervised and unsupervised learning
+
+Based on the problem, you'll use either a supervised or unsupervised approach. For example, if you know beforehand the value or category you want to predict, you'd use supervised learning. However, if you wanted to learn if your dataset contains any segmentations or groupings of related examples, you'd use unsupervised learning.
+
+Suppose you had a dataset of users for an online shopping website, and it contained the following columns:
+
+![An image of an row of customer attributes.](https://developers.google.com/static/machine-learning/intro-to-ml/images/supervised-unsupervised.png)
+
+If you wanted to understand the types of users that visit the site, would you use supervised or unsupervised learning?
+
+Unsupervised learning.
+
+Because we want the model to cluster groups of related customers, we'd use unsupervised learning. After the model clustered the users, we'd create our own names for each cluster, for example, "discount seekers," "deal hunters," "surfers," "loyal," and "wanderers."
+
+
+
+Suppose you had an energy usage dataset for homes with the following columns:
+
+![An image of a row of home attributes.](https://developers.google.com/static/machine-learning/intro-to-ml/images/supervised.png)
+
+What type of ML would you use to predict the kilowatt hours used per year for a newly constructed house?
+
+Supervised learning.
+
+Supervised learning trains on labeled examples. In this dataset "kilowatt hours used per year” would be the label because this is the value you want the model to predict. The features would be "square footage,” "location,” and "year built.”
+
+
+
+Suppose you had a flight dataset with the following columns:
+
+![An image of a row of flight data.](https://developers.google.com/static/machine-learning/intro-to-ml/images/flight-table.png)
+
+If you wanted to predict the cost of an airplane ticket, would you use regression or classification?
+
+Regression
+
+A regression model's output is a numeric value.
+
+
+
+Based on the dataset, could you train a classification model to classify the cost of an airplane ticket as "high," "average," or "low"?
+
+Yes, but we'd first need to convert the numeric values in the `airplane_ticket_cost` column to categorical values.
+
+It's possible to create a classification model from the dataset. You would do something like the following:
+
+1. Find the average cost of a ticket from the departure airport to the destination airport.
+2. Determine the thresholds that would constitute "high," "average," and "low".
+3. Compare the predicted cost to the thresholds and output the category the value falls within.
+
+
+## Training and evaluating
+
+After we've trained a model, we evaluate it by using a dataset with labeled examples and compare the model's predicted value to the label's actual value.
+
+Select the two best answers for the question.
+
+If the model's predictions are far off, what might you do to make them better?
+
+Retrain the model using a larger and more diverse dataset.
+
+Models trained on datasets with more examples and a wider range of values can produce better predictions because the model has a better generalized solution for the relationship between the features and the label.
+
+1 of 2 correct answers.
+
+Retrain the model, but use only the features you believe have the strongest predictive power for the label.
+
+Retraining the model with fewer features, but that have more predictive power, can produce a model that makes better predictions.
+
+2 of 2 correct answers.

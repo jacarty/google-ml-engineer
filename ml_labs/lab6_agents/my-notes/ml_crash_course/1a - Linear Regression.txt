@@ -1,0 +1,617 @@
+## AI-generated Key Takeaways
+
+**Estimated module length:** 70 minutes
+
+This module introduces **linear regression** concepts.
+
+**Learning objectives:**
+
+- Explain a loss function and how it works.
+- Define and describe how gradient descent finds the optimal model parameters.
+- Describe how to tune hyperparameters to efficiently train a linear model.
+
+**Prerequisites:**
+
+This module assumes you are familiar with the concepts covered in the following module:
+
+- [Introduction to Machine Learning](https://developers.google.com/machine-learning/intro-to-ml)
+
+[**Linear regression**](https://developers.google.com/machine-learning/glossary#linear-regression) is a statistical technique used to find the relationship between variables. In an ML context, linear regression finds the relationship between [**features**](https://developers.google.com/machine-learning/glossary#feature) and a [**label**](https://developers.google.com/machine-learning/glossary#label).
+
+For example, suppose we want to predict a car's fuel efficiency in miles per gallon based on how heavy the car is, and we have the following dataset:
+
+|Pounds in 1000s (feature)|Miles per gallon (label)|
+|---|---|
+|3.5|18|
+|3.69|15|
+|3.44|18|
+|3.43|16|
+|4.34|15|
+|4.42|14|
+|2.37|24|
+
+If we plotted these points, we'd get the following graph:
+
+![Figure 1. Data points showing downward-sloping trend from left to right.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/car-data-points.png)
+
+**Figure 1**. Car heaviness (in pounds) versus miles per gallon rating. As a car gets heavier, its miles per gallon rating generally decreases.
+
+We could create our own model by drawing a best fit line through the points:
+
+![Figure 2. Data points with a best fit line drawn through them representing the model.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/car-data-points-with-model.png)
+
+**Figure 2**. A best fit line drawn through the data from the previous figure.
+
+## Linear regression equation
+
+In algebraic terms, the model would be defined as
+
+, where
+
+- is miles per gallon—the value we want to predict.
+
+- is the slope of the line.
+
+- is pounds—our input value.
+
+- is the y-intercept.
+
+In ML, we write the equation for a linear regression model as follows:
+
+where:
+
+- is the predicted label—the output.
+
+is the [**bias**](https://developers.google.com/machine-learning/glossary#bias-math-or-bias-term) of the model. Bias is the same concept as the y-intercept in the algebraic equation for a line. In ML, bias is sometimes referred to as- . Bias is a [**parameter**](https://developers.google.com/machine-learning/glossary#parameter) of the model and is calculated during training.
+
+is the [**weight**](https://developers.google.com/machine-learning/glossary#weight) of the feature. Weight is the same concept as the slope- in the algebraic equation for a line. Weight is a [**parameter**](https://developers.google.com/machine-learning/glossary#parameter) of the model and is calculated during training.
+
+- is a [**feature**](https://developers.google.com/machine-learning/glossary#feature)—the input.
+
+During training, the model calculates the weight and bias that produce the best model.
+
+![Figure 3. The equation y' = b + w1x1, with each component annotated with its purpose.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/equation.png)
+
+**Figure 3**. Mathematical representation of a linear model.
+
+In our example, we'd calculate the weight and bias from the line we drew. The bias is 34 (where the line intersects the y-axis), and the weight is –4.6 (the slope of the line). The model would be defined as
+
+, and we could use it to make predictions. For instance, using this model, a 4,000-pound car would have a predicted fuel efficiency of 15.6 miles per gallon.
+
+![Figure 4. Same graph as Figure 2, with the point (4, 15.6) highlighted.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/model-prediction.png)
+
+**Figure 4**. Using the model, a 4,000-pound car has a predicted fuel efficiency of 15.6 miles per gallon.
+
+### Models with multiple features
+
+Although the example in this section uses only one feature—the heaviness of the car—a more sophisticated model might rely on multiple features, each having a separate weight (,
+
+, etc.). For example, a model that relies on five features would be written as follows:
+
+For example, a model that predicts gas mileage could additionally use features such as the following:
+
+- Engine displacement
+- Acceleration
+- Number of cylinders
+- Horsepower
+
+This model would be written as follows:
+
+![Figure 5. Linear regression equation with five features.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/equation-multiple-features.png)
+
+**Figure 5**. A model with five features to predict a car's miles per gallon rating.
+
+By graphing a couple of these additional features, we can see that they also have a linear relationship to the label, miles per gallon:
+
+![Figure 6. Displacement in cubic centimeters graphed against miles per gallon showing a negative linear relationship.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/displacement.png)
+
+**Figure 6**. A car's displacement in cubic centimeters and its miles per gallon rating. As a car's engine gets bigger, its miles per gallon rating generally decreases.
+
+![Figure 7. Acceleration from zero to sixty in seconds graphed against miles per gallon showing a positive linear relationship.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/acceleration.png)
+
+**Figure 7**. A car's acceleration and its miles per gallon rating. As a car's acceleration takes longer, the miles per gallon rating generally increases.
+
+### Exercise: Check your understanding
+
+What parts of the linear regression equation are updated during training?
+
+The bias and weights
+
+# Linear regression: Loss
+
+## AI-generated Key Takeaways
+
+[**Loss**](https://developers.google.com/machine-learning/glossary#loss) is a numerical metric that describes how wrong a model's [**predictions**](https://developers.google.com/machine-learning/glossary#prediction) are. Loss measures the distance between the model's predictions and the actual labels. The goal of training a model is to minimize the loss, reducing it to its lowest possible value.
+
+In the following image, you can visualize loss as arrows drawn from the data points to the model. The arrows show how far the model's predictions are from the actual values.
+
+![Figure 8. Loss lines connect the data points to the
+model.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/loss-lines.png)
+
+**Figure 8**. Loss is measured from the actual value to the predicted value.
+
+## Distance of loss
+
+In statistics and machine learning, loss measures the difference between the predicted and actual values. Loss focuses on the _distance_ between the values, not the direction. For example, if a model predicts 2, but the actual value is 5, we don't care that the loss is negative (). Instead, we care that the _distance_ between the values is
+
+. Thus, all methods for calculating loss remove the sign.
+
+The two most common methods to remove the sign are the following:
+
+- Take the absolute value of the difference between the actual value and the prediction.
+- Square the difference between the actual value and the prediction.
+
+## Types of loss
+
+In linear regression, there are five main types of loss, which are outlined in the following table.
+
+![[Pasted image 20251123185609.png]]
+
+The functional difference between L1 loss and L2 loss (or between MAE/RMSE and MSE) is squaring. When the difference between the prediction and label is large, squaring makes the loss even larger. When the difference is small (less than 1), squaring makes the loss even smaller.
+
+Loss metrics like MAE and RMSE may be preferable to L2 loss or MSE in some use cases because they tend to be more human-interpretable, as they measure error using the same scale as the model's predicted value.
+
+**Note:** MAE and RMSE can differ quite widely. MAE represents the average prediction error, whereas RMSE represents the "spread" of the errors, and is more skewed by larger errors.
+
+When processing multiple examples at once, we recommend averaging the losses across all the examples, whether using MAE, MSE, or RMSE.
+
+## Calculating loss example
+
+Using the previous [best fit line](https://developers.google.com/machine-learning/crash-course/linear-regression#linear_regression_equation), we'll calculate L2 loss for a single example. From the best fit line, we had the following values for weight and bias:
+
+If the model predicts that a 2,370-pound car gets 23.1 miles per gallon, but it actually gets 26 miles per gallon, we would calculate the L2 loss as follows:
+
+**Note:** The formula uses 2.37 because the graphs are scaled to 1000s of pounds
+![[Pasted image 20251123185536.png]]
+
+In this example, the L2 loss for that single data point is 8.41.
+
+## Choosing a loss
+
+Deciding whether to use MAE or MSE can depend on the dataset and the way you want to handle certain predictions. Most feature values in a dataset typically fall within a distinct range. For example, cars are normally between 2000 and 5000 pounds and get between 8 to 50 miles per gallon. An 8,000-pound car, or a car that gets 100 miles per gallon, is outside the typical range and would be considered an [**outlier**](https://developers.google.com/machine-learning/glossary#outliers).
+
+An outlier can also refer to how far off a model's predictions are from the real values. For instance, 3,000 pounds is within the typical car-weight range, and 40 miles per gallon is within the typical fuel-efficiency range. However, a 3,000-pound car that gets 40 miles per gallon would be an outlier in terms of the model's prediction because the model would predict that a 3,000-pound car would get around 20 miles per gallon.
+
+When choosing the best loss function, consider how you want the model to treat outliers. For instance, MSE moves the model more toward the outliers, while MAE doesn't. L2 loss incurs a much higher penalty for an outlier than L1 loss. For example, the following images show a model trained using MAE and a model trained using MSE. The red line represents a fully trained model that will be used to make predictions. The outliers are closer to the model trained with MSE than to the model trained with MAE.
+
+![Figure 9. The model is tilted more toward the outliers.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/model-mse.png)
+
+**Figure 9**. MSE loss moves the model closer to the outliers.
+
+![Figure 10. The model is tilted further away from the outliers.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/model-mae.png)
+
+**Figure 10**. MAE loss keeps the model farther from the outliers.
+
+Note the relationship between the model and the data:
+
+- **MSE**. The model is closer to the outliers but further away from most of the other data points.
+    
+- **MAE**. The model is further away from the outliers but closer to most of the other data points.
+    
+#### Click the icon for more guidelines on choosing a loss metric
+**Choose MSE:**
+
+- If you want to heavily penalize large errors.
+- If you believe the outliers are important and indicative of true data variance that the model should account for.
+
+**Note:** The mathematical properties of MSE often make optimization smoother. Root Mean Squared Error (RMSE) is often used to get the error back into the same units as the label.
+
+**Choose MAE:**
+
+- If your dataset has significant outliers that you don't want to overly influence the model. MAE is more robust.
+- If you prefer a loss function that is more directly interpretable as the average error magnitude.
+
+In practice, your metric choice can also depend on the specific business problem and what kind of errors are more costly.
+
+### Check Your Understanding
+
+Consider the following two plots of a linear model fit to a dataset:
+
+|                                                                                                                                                                                                                                                            |                                                                                                                                                                                                                                                           |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ![A plot of 10 points.<br>A line runs through 6 of the points. 2 points are 1 unit<br>above the line; 2 other points are 1 unit below the line.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/mse-left.png) | ![A plot of 10 points. A line runs<br>through 8 of the points. 1 point is 2 units<br>above the line; 1 other point is 2 units below the line.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/mse-right.png) |
+
+Which of the two linear models shown in the preceding plots has the **higher** Mean Squared Error (MSE) when evaluated on the plotted data points?
+
+![[Pasted image 20251123185820.png]]
+# Linear regression: Parameters exercise
+
+The graph below plots 20 examples from a fuel-efficiency dataset, with the feature (car heaviness in thousands of pounds) plotted on the x-axis and the label (miles per gallon) plotted on the y-axis.
+
+**Your task:** Adjust the **Weight** and **Bias** sliders above the graph to find the linear model that minimizes MSE loss on the data.
+
+**Questions to consider:**
+
+- What is the lowest MSE you can achieve?
+- What weight and bias values produced this loss?
+
+![[Pasted image 20251123190108.png]]
+
+# Linear regression: Gradient descent
+
+## AI-generated Key Takeaways
+
+[**Gradient descent**](https://developers.google.com/machine-learning/glossary#gradient-descent) is a mathematical technique that iteratively finds the weights and bias that produce the model with the lowest loss. Gradient descent finds the best weight and bias by repeating the following process for a number of user-defined iterations.
+
+The model begins training with randomized weights and biases near zero, and then repeats the following steps:
+
+1. Calculate the loss with the current weight and bias.
+2. Determine the direction to move the weights and bias that reduce loss.
+3. Move the weight and bias values a small amount in the direction that reduces loss.
+4. Return to step one and repeat the process until the model can't reduce the loss any further.
+
+The diagram below outlines the iterative steps gradient descent performs to find the weights and bias that produce the model with the lowest loss.
+
+![Figure 11. Illustration of the gradient descent process.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/gradient-descent.png)
+
+**Figure 11**. Gradient descent is an iterative process that finds the weights and bias that produce the model with the lowest loss.
+
+## Click the plus icon to learn more about the math behind gradient descent.
+
+At a concrete level, we can walk through the gradient descent steps using a small dataset with seven examples for a car's heaviness in pounds and its miles per gallon rating:
+
+|Pounds in 1000s (feature)|Miles per gallon (label)|
+|---|---|
+|3.5|18|
+|3.69|15|
+|3.44|18|
+|3.43|16|
+|4.34|15|
+|4.42|14|
+|2.37|24|
+
+1. The model starts training by setting the weight and bias to zero:
+2. Calculate MSE loss with the current model parameters:
+3. Calculate the slope of the tangent to the loss function at each weight and the bias:
+#### Click the plus icon to learn about calculating slope.
+
+At a concrete level, we can walk through the gradient descent steps using a small dataset with seven examples for a car's heaviness in pounds and its miles per gallon rating:
+
+|Pounds in 1000s (feature)|Miles per gallon (label)|
+|---|---|
+|3.5|18|
+|3.69|15|
+|3.44|18|
+|3.43|16|
+|4.34|15|
+|4.42|14|
+|2.37|24|
+
+1. The model starts training by setting the weight and bias to zero:
+![[Pasted image 20251123191219.png]]
+2. Calculate MSE loss with the current model parameters:
+![[Pasted image 20251123191230.png]]
+3. Calculate the slope of the tangent to the loss function at each weight and the bias:
+![[Pasted image 20251123191241.png]]
+#### Click the plus icon to learn about calculating slope.
+
+To get the slope for the lines tangent to the weight and bias, we take the derivative of the loss function with respect to the weight and the bias, and then solve the equations.
+
+We'll write the equation for making a prediction as:  
+![[Pasted image 20251123191304.png]]
+
+We'll write the actual value as y. We'll calculate MSE using:  
+![[Pasted image 20251123191355.png]]
+
+**Weight derivative**
+![[Pasted image 20251123191412.png]]
+First we sum each predicted value minus the actual value and then multiply it by two times the feature value. Then we divide the sum by the number of examples. The result is the slope of the line tangent to the value of the weight.
+
+If we solve this equation with a weight and bias equal to zero, we get -119.7 for the line's slope.
+
+**Bias derivative**
+
+![[Pasted image 20251123191434.png]]
+First we sum each predicted value minus the actual value and then multiply it by two. Then we divide the sum by the number of examples. The result is the slope of the line tangent to the value of the bias.
+
+If we solve this equation with a weight and bias equal to zero, we get -34.3 for the line's slope.
+
+4. Move a small amount in the direction of the negative slope to get the next weight and bias. For now, we'll arbitrarily define the "small amount" as 0.01:
+![[Pasted image 20251123191443.png]]
+Use the new weight and bias to calculate the loss and repeat. Completing the process for six iterations, we'd get the following weights, biases, and losses:
+
+|Iteration|Weight|Bias|Loss (MSE)|
+|---|---|---|---|
+|1|0|0|303.71|
+|2|1.20|0.34|170.84|
+|3|2.05|0.59|103.17|
+|4|2.66|0.78|68.70|
+|5|3.09|0.91|51.13|
+|6|3.40|1.01|42.17|
+
+You can see that the loss gets lower with each updated weight and bias. In this example, we stopped after six iterations. In practice, a model trains until it [**converges**](https://developers.google.com/machine-learning/glossary#convergence). When a model converges, additional iterations don't reduce loss more because gradient descent has found the weights and bias that nearly minimize the loss.
+
+If the model continues to train past convergence, loss begins to fluctuate in small amounts as the model continually updates the parameters around their lowest values. This can make it hard to verify that the model has actually converged. To confirm the model has converged, you'll want to continue training until the loss has stabilized.
+
+## Model convergence and loss curves
+
+When training a model, you'll often look at a [**loss curve**](https://developers.google.com/machine-learning/glossary#loss-curve) to determine if the model has [**converged**](https://developers.google.com/machine-learning/glossary#convergence). The loss curve shows how the loss changes as the model trains. The following is what a typical loss curve looks like. Loss is on the y-axis and iterations are on the x-axis:
+
+![Figure 12. Graph of loss curve showing a steep decline and then a gentle decline.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/convergence.png)
+
+**Figure 12**. Loss curve showing the model converging around the 1,000th-iteration mark.
+
+You can see that loss dramatically decreases during the first few iterations, then gradually decreases before flattening out around the 1,000th-iteration mark. After 1,000 iterations, we can be mostly certain that the model has converged.
+
+In the following figures, we draw the model at three points during the training process: the beginning, the middle, and the end. Visualizing the model's state at snapshots during the training process solidifies the link between updating the weights and bias, reducing loss, and model convergence.
+
+In the figures, we use the derived weights and bias at a particular iteration to represent the model. In the graph with the data points and the model snapshot, blue loss lines from the model to the data points show the amount of loss. The longer the lines, the more loss there is.
+
+In the following figure, we can see that around the second iteration the model would not be good at making predictions because of the high amount of loss.
+
+![Figure 13. Loss curve and corresponding graph of the model, which tilts away from the data points.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/large-loss.png)
+
+**Figure 13**. Loss curve and snapshot of the model at the beginning of the training process.
+
+At around the 400th-iteration, we can see that gradient descent has found the weight and bias that produce a better model.
+
+![Figure 14. Loss curve and corresponding graph of the model, which cuts through the data points but not at the optimal angle.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/med-loss.png)
+
+**Figure 14**. Loss curve and snapshot of model about midway through training.
+
+And at around the 1,000th-iteration, we can see that the model has converged, producing a model with the lowest possible loss.
+
+![Figure 15. Loss curve and corresponding graph of the model, which fits the data well.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/low-loss.png)
+
+**Figure 15**. Loss curve and snapshot of the model near the end of the training process.
+
+### Exercise: Check your understanding
+
+What's the role of gradient descent in linear regression?
+
+Gradient descent is an iterative process that finds the best weights and bias that minimize the loss.
+
+
+### Convergence and convex functions
+
+The loss functions for linear models always produce a [**convex**](https://developers.google.com/machine-learning/glossary#convex-function) surface. As a result of this property, when a linear regression model converges, we know the model has found the weights and bias that produce the lowest loss.
+
+If we graph the loss surface for a model with one feature, we can see its convex shape. The following is the loss surface for a hypothetical miles per gallon dataset. Weight is on the x-axis, bias is on the y-axis, and loss is on the z-axis:
+
+![Figure 16. 3-D graph of loss surface.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/convexity.png)
+
+**Figure 16.** Loss surface that shows its convex shape.
+
+In this example, a weight of -5.44 and bias of 35.94 produce the lowest loss at 5.54:
+
+![Figure 17. 3-D graph of loss surface, with (-5.44, 35.94, 5.54) at the bottom.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/loss-weight-bias.png)
+
+**Figure 17**. Loss surface showing the weight and bias values that produce the lowest loss.
+
+A linear model converges when it's found the minimum loss. Therefore, additional iterations only cause gradient descent to move the weight and bias values in very small amounts around the minimum. If we graphed the weights and bias points during gradient descent, the points would look like a ball rolling down a hill, finally stopping at the point where there's no more downward slope.
+
+![Figure 18. Convex 3-D loss surface with gradient descent points moving to the lowest point.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/loss-surface-points.png)
+
+**Figure 18**. Loss graph showing gradient descent points stopping at the lowest point on the graph.
+
+Notice that the black loss points create the exact shape of the loss curve: a steep decline before gradually sloping down until they've reached the lowest point on the loss surface.
+
+It's important to note that the model almost never finds the exact minimum for each weight and bias, but instead finds a value very close to it. It's also important to note that the minimum for the weights and bias don't correspond to zero loss, only a value that produces the lowest loss for that parameter.
+
+Using the weight and bias values that produce the lowest loss—in this case a weight of -5.44 and a bias of 35.94—we can graph the model to see how well it fits the data:
+
+![Figure 19. Graph of pounds in 1000s vs miles per gallon, with the model fitting the data.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/graphed-model.png)
+
+**Figure 19.** Model graphed using the weight and bias values that produce the lowest loss.
+
+This would be the best model for this dataset because no other weight and bias values produce a model with lower loss.
+
+# Linear regression: Hyperparameters
+
+[**Hyperparameters**](https://developers.google.com/machine-learning/glossary#hyperparameter) are variables that control different aspects of training. Three common hyperparameters are:
+
+- [**Learning rate**](https://developers.google.com/machine-learning/glossary#learning-rate)
+- [**Batch size**](https://developers.google.com/machine-learning/glossary#batch-size)
+- [**Epochs**](https://developers.google.com/machine-learning/glossary#epoch)
+
+In contrast, [**parameters**](https://developers.google.com/machine-learning/glossary#parameter) are the variables, like the weights and bias, that are part of the model itself. In other words, hyperparameters are values that you control; parameters are values that the model calculates during training.
+
+## Learning rate
+
+[**Learning rate**](https://developers.google.com/machine-learning/glossary#learning-rate) is a floating point number you set that influences how quickly the model converges. If the learning rate is too low, the model can take a long time to converge. However, if the learning rate is too high, the model never converges, but instead bounces around the weights and bias that minimize the loss. The goal is to pick a learning rate that's not too high nor too low so that the model converges quickly.
+
+The learning rate determines the magnitude of the changes to make to the weights and bias during each step of the gradient descent process. The model multiplies the gradient by the learning rate to determine the model's parameters (weight and bias values) for the next iteration. In the third step of [gradient descent](https://developers.google.com/machine-learning/crash-course/linear-regression/gradient-descent), the "small amount" to move in the direction of negative slope refers to the learning rate.
+
+The difference between the old model parameters and the new model parameters is proportional to the slope of the loss function. For example, if the slope is large, the model takes a large step. If small, it takes a small step. For example, if the gradient's magnitude is 2.5 and the learning rate is 0.01, then the model will change the parameter by 0.025.
+
+The ideal learning rate helps the model to converge within a reasonable number of iterations. In Figure 20, the loss curve shows the model significantly improving during the first 20 iterations before beginning to converge:
+
+![Figure 20. Loss curve that shows a steep slope before flattening out.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/correct-lr.png)
+
+**Figure 20**. Loss graph showing a model trained with a learning rate that converges quickly.
+
+In contrast, a learning rate that's too small can take too many iterations to converge. In Figure 21, the loss curve shows the model making only minor improvements after each iteration:
+
+![Figure 21. Loss curve that shows an almost 45-degree slope.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/small-lr.png)
+
+**Figure 21**. Loss graph showing a model trained with a small learning rate.
+
+A learning rate that's too large never converges because each iteration either causes the loss to bounce around or continually increase. In Figure 22, the loss curve shows the model decreasing and then increasing loss after each iteration, and in Figure 23 the loss increases at later iterations:
+
+![Figure 22. Loss curve that shows jagged up-and-down line.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/high-lr.png)
+
+**Figure 22**. Loss graph showing a model trained with a learning rate that's too big, where the loss curve fluctuates wildly, going up and down as the iterations increase.
+
+![Figure 23. Loss curve that shows the loss increasing at later iterations](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/increasing-loss.png)
+
+**Figure 23**. Loss graph showing a model trained with a learning rate that's too big, where the loss curve drastically increases in later iterations.
+
+### Exercise: Check your understanding
+
+What is the ideal learning rate?
+
+The ideal learning rate is problem-dependent.
+
+## Batch size
+
+[**Batch size**](https://developers.google.com/machine-learning/glossary#batch-size) is a hyperparameter that refers to the number of [**examples**](https://developers.google.com/machine-learning/glossary#example) the model processes before updating its weights and bias. You might think that the model should calculate the loss for _every_ example in the dataset before updating the weights and bias. However, when a dataset contains hundreds of thousands or even millions of examples, using the full batch isn't practical.
+
+Two common techniques to get the right gradient on _average_ without needing to look at every example in the dataset before updating the weights and bias are [**stochastic gradient descent**](https://developers.google.com/machine-learning/glossary#SGD) and [**mini-batch stochastic gradient descent**](https://developers.google.com/machine-learning/glossary#mini-batch-stochastic-gradient-descent):
+
+- **Stochastic gradient descent (SGD)**: Stochastic gradient descent uses only a single example (a batch size of one) per iteration. Given enough iterations, SGD works but is very noisy. "Noise" refers to variations during training that cause the loss to increase rather than decrease during an iteration. The term "stochastic" indicates that the one example comprising each batch is chosen at random.
+    
+    Notice in the following image how loss slightly fluctuates as the model updates its weights and bias using SGD, which can lead to noise in the loss graph:
+    
+    ![Figure 24. Steep loss curve that flattens out, but with a lot of tiny fluctuations.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/noisy-gradient.png)
+    
+    **Figure 24**. Model trained with stochastic gradient descent (SGD) showing noise in the loss curve.
+    
+    Note that using stochastic gradient descent can produce noise throughout the entire loss curve, not just near convergence.
+    
+- **Mini-batch stochastic gradient descent (mini-batch SGD)**: Mini-batch stochastic gradient descent is a compromise between full-batch and SGD. For N number of data points, the batch size can be any number greater than 1 and less than N. The model chooses the examples included in each batch at random, averages their gradients, and then updates the weights and bias once per iteration.
+
+  Determining the number of examples for each batch depends on the dataset and the available compute resources. In general, small batch sizes behaves like SGD, and larger batch sizes behaves like full-batch gradient descent.
+    
+    ![Figure 25. Steep loss curve that begins to flatten out, with much smaller fluctuations near convergence.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/mini-batch-sgd.png)
+    
+    **Figure 25**. Model trained with mini-batch SGD.
+    
+
+When training a model, you might think that noise is an undesirable characteristic that should be eliminated. However, a certain amount of noise can be a good thing. In later modules, you'll learn how noise can help a model [**generalize**](https://developers.google.com/machine-learning/glossary#generalization) better and find the optimal weights and bias in a [**neural network**](https://developers.google.com/machine-learning/glossary#neural-network).
+
+## Epochs
+
+During training, an [**epoch**](https://developers.google.com/machine-learning/glossary#epoch) means that the model has processed every example in the training set _once_. For example, given a training set with 1,000 examples and a mini-batch size of 100 examples, it will take the model 10 [**iterations**](https://developers.google.com/machine-learning/glossary#iteration) to complete one epoch.
+
+Training typically requires many epochs. That is, the system needs to process every example in the training set multiple times.
+
+The number of epochs is a hyperparameter you set before the model begins training. In many cases, you'll need to experiment with how many epochs it takes for the model to converge. In general, more epochs produces a better model, but also takes more time to train.
+
+![Figure 26. A full batch is the entire dataset, a mini batch is a subset of the dataset, and an epoch is a full pass through ten mini batches.](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/batch-size.png)
+
+**Figure 26**. Full batch versus mini batch.
+
+The following table describes how batch size and epochs relate to the number of times a model updates its parameters.
+
+|Batch type|When weights and bias updates occur|
+|---|---|
+|Full batch|After the model looks at all the examples in the dataset. For instance, if a dataset contains 1,000 examples and the model trains for 20 epochs, the model updates the weights and bias 20 times, once per epoch.|
+|Stochastic gradient descent|After the model looks at a single example from the dataset. For instance, if a dataset contains 1,000 examples and trains for 20 epochs, the model updates the weights and bias 20,000 times.|
+|Mini-batch stochastic gradient descent|After the model looks at the examples in each batch. For instance, if a dataset contains 1,000 examples, and the batch size is 100, and the model trains for 20 epochs, the model updates the weights and bias 200 times.|
+
+### Exercise: Check your understanding
+
+1. What's the best batch size when using mini-batch SGD?
+
+It depends
+
+The ideal batch size depends on the dataset and the available compute resources
+
+2. Which of the following statements is true?
+
+Doubling the learning rate can slow down training.
+
+This statement is true. Doubling the learning rate can result in a learning rate that is too large, and therefore cause the weights to "bounce around," increasing the amount of time needed to converge. As always, the best hyperparameters depend on your dataset and available compute resources.
+
+# Linear regression: Gradient descent exercise
+
+In this exercise, you'll revisit the graph of fuel-efficiency data from the [Parameters exercise](https://developers.google.com/machine-learning/crash-course/linear-regression/parameters-exercise). But this time, you'll use gradient descent to learn the optimal weight and bias values for a linear model that minimizes loss.
+
+Complete the three tasks below the graph.
+
+![[Pasted image 20251124121112.png]]
+
+**Task #1:** Adjust the **Learning Rate** slider below the graph to set a learning rate of 0.03. Click the **Start** button to run gradient descent.
+
+How long does the model training take to converge (reach a stable minimum loss value)? What is the MSE value at model convergence? What weight and bias values produce this value?
+
+#### Click the plus icon to see our solution
+
+When we set a learning rate of 0.03, the model converged after approximately 30 seconds, achieving a MSE of just under 3 with weight and bias values of –2.08 and 23.098, respectively. This indicates we've picked a good learning rate value.
+
+**Note:** The data points in the graph vary slightly each time you load the page, so your solutions here may be a little different than ours.
+
+**Task #2:** Click the **Reset** button below the graph to reset the Weight and Bias values in the graph. Adjust the **Learning Rate** slider to a value around 1.10e–5. Click the **Start** button to run gradient descent.
+
+What do you notice about how long it takes the model training to converge this time?
+
+#### Click the plus icon to see the solution
+
+After several minutes, model training still hasn't converged. Small updates to Weight and Bias values continue to result in slightly lower loss values. This suggests that picking a higher learning rate would enable gradient descent to find the optimal weight and bias values more quickly.
+
+**Task #3:** Click the **Reset** button below the graph to reset the Weight and Bias values in the graph. Adjust the **Learning Rate** slider up to 1. Click the **Start** button to run gradient descent.
+
+What happens to the loss values as gradient descent runs? How long will model training take to converge this time?
+
+#### Click the plus icon to see the solution
+
+Loss values fluctuate wildly at high values (MSE over 300). This indicates that the learning rate is too high, and model training will never reach convergence.
+
+# Linear regression: Programming exercise
+
+See Repo.
+
+# Linear Regression: Test Your Knowledge
+
+Let's do a quick test! You must answer at least 4 questions correctly to pass this quiz.
+
+![Machine Learning Crash Course: Linear regression](https://developers.google.com/static/profile/badges/playlists/machine-learning-crash-course/linear-regression/badge.svg)
+
+1. ## Which of these is an example of a parameter that is calculated during training for a linear regression model?
+    
+     Weight
+    
+    check_circle_outline
+    
+    Correct!
+    
+     Learning rate
+    
+     Prediction
+    
+     Label
+    
+2. ## Fill-in-the-blanks
+    
+    Enter one or more words to complete the sentence.
+    
+    Suppose you are building a linear regression model to predict the sale price of a used car. The training dataset includes the following information: sale price (label), model year (feature), MSRP (feature), odometer mileage (feature), gas mileage (feature). How many weights will there be for this model? 
+    
+    4 ---- check_circle_outline
+    
+    Correct!
+    
+3. ## Fill-in-the-blanks
+    
+    Enter one or more words to complete the sentence.
+    
+    Review the graph below. What is the mean squared error? 
+    
+    ![A plot of a line on a Cartesian coordinate plane that runs through the coordinates (0, 2) and (10, 7). There are also 10 data points plotted on the graph with the coordinates (1, 2.5), (2, 3), (3, 3.5), (4, 6), (5, 4.5), (6, 5), (7, 5.5), (8, 4), (9, 6.5), and (10, 7). The line runs through all these points except (4, 6) and (8, 4).](https://developers.google.com/static/machine-learning/crash-course/linear-regression/images/test_your_knowledge_question_3_graph.png)
+    
+    0.8 --- check_circle_outline
+    
+    Correct!
+    
+4. ## Which of these controls the size of the steps of the gradient descent algorithm?
+    
+     Learning rate
+    
+    check_circle_outline
+    
+    Correct
+    
+     Loss function
+    
+     Batch size
+    
+     Regularization rate
+    
+5. ## Suppose you are training a linear regression model and after about 100 iterations you notice that the loss is high and trending downward, but not by a significant amount. What is likely to be the problem?
+    
+     The learning rate is too large.
+    
+     The learning rate is too small.
+    
+    check_circle_outline
+    
+    If the learning rate is too low, loss values will decrease very slowly during gradient descent.
+    
+     Your dataset has too many examples.
+    
+     Your dataset does not have enough examples.
+    
+
+Results
+
+You scored 5 out of 5. Congratulations! You have passed this quiz.

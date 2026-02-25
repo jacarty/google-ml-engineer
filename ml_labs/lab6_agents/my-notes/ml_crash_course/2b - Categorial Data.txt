@@ -1,0 +1,288 @@
+# Working with categorical data
+
+**Learning objectives**
+
+- Distinguish categorical data from numerical data.
+- Represent categorical data with one-hot vectors.
+- Address common issues with categorical data.
+- Create feature crosses.
+
+[**Categorical data**](https://developers.google.com/machine-learning/glossary#categorical-data) has a _specific set_ of possible values. For example:
+
+- The different species of animals in a national park
+- The names of streets in a particular city
+- Whether or not an email is spam
+- The colors that house exteriors are painted
+- Binned numbers, which are described in the [Working with Numerical Data](https://developers.google.com/machine-learning/crash-course/numerical-data) module
+
+## Numbers can also be categorical data
+
+True [**numerical data**](https://developers.google.com/machine-learning/glossary#numerical-data) can be meaningfully multiplied. For example, consider a model that predicts the value of a house based on its area. Note that a useful model for evaluating house prices typically relies on hundreds of features. That said, all else being equal, a house of 200 square meters should be roughly twice as valuable as an identical house of 100 square meters.
+
+Oftentimes, you should represent features that contain integer values as categorical data instead of numerical data. For example, consider a postal code feature in which the values are integers. If you represent this feature numerically rather than categorically, you're asking the model to find a numeric relationship between different postal codes. That is, you're telling the model to treat postal code 20004 as twice (or half) as large a signal as postal code 10002. Representing postal codes as categorical data lets the model weight each individual postal code separately.
+
+## Encoding
+
+**Encoding** means converting categorical or other data to numerical vectors that a model can train on. This conversion is necessary because models can only train on floating-point values; models can't train on strings such as `"dog"` or `"maple"`. This module explains different encoding methods for categorical data.
+
+# Categorical data: Vocabulary and one-hot encoding
+
+The term **dimension** is a synonym for the number of elements in a [**feature vector**](https://developers.google.com/machine-learning/glossary#feature_vector). Some categorical features are low dimensional. For example:
+
+|Feature name|# of categories|Sample categories|
+|---|---|---|
+|snowed_today|2|True, False|
+|skill_level|3|Beginner, Practitioner, Expert|
+|season|4|Winter, Spring, Summer, Autumn|
+|day_of_week|7|Monday, Tuesday, Wednesday|
+|planet|8|Mercury, Venus, Earth|
+
+When a categorical feature has a low number of possible categories, you can encode it as a **vocabulary**. With a vocabulary encoding, the model treats each possible categorical value as a _separate feature_. During training, the model learns different weights for each category.
+
+For example, suppose you are creating a model to predict a car's price based, in part, on a categorical feature named `car_color`. Perhaps red cars are worth more than green cars. Since manufacturers offer a limited number of exterior colors, `car_color` is a low-dimensional categorical feature. The following illustration suggests a vocabulary (possible values) for `car_color`:
+
+![[Pasted image 20251128194543.png]]
+**Figure 1.** A unique feature for each category.
+
+## Exercise: Check your understanding
+
+True or False: A machine learning model can train _directly_ on raw string values, like "Red" and "Black", without converting these values to numerical vectors.
+
+False
+A machine learning model can only train on features with floating-point values, so you'll need to convert those strings to floating-point values before training.
+
+## Index numbers
+
+Machine learning models can only manipulate floating-point numbers. Therefore, you must convert each string to a unique index number, as in the following illustration:
+
+![[Pasted image 20251128194603.png]]
+**Figure 2.** Indexed features.
+
+After converting strings to unique index numbers, you'll need to process the data further to represent it in ways that help the model learn meaningful relationships between the values. If the categorical feature data is left as indexed integers and loaded into a model, the model would treat the indexed values as continuous floating-point numbers. The model would then consider "purple" six times more likely than "orange."
+
+## One-hot encoding
+
+The next step in building a vocabulary is to convert each index number to its [**one-hot encoding**](https://developers.google.com/machine-learning/glossary#one-hot_encoding). In a one-hot encoding:
+
+- Each category is represented by a vector (array) of N elements, where N is the number of categories. For example, if `car_color` has eight possible categories, then the one-hot vector representing will have eight elements.
+- Exactly _one_ of the elements in a one-hot vector has the value 1.0; all the remaining elements have the value 0.0.
+
+For example, the following table shows the one-hot encoding for each color in `car_color`:
+
+|Feature|Red|Orange|Blue|Yellow|Green|Black|Purple|Brown|
+|---|---|---|---|---|---|---|---|---|
+|"Red"|1|0|0|0|0|0|0|0|
+|"Orange"|0|1|0|0|0|0|0|0|
+|"Blue"|0|0|1|0|0|0|0|0|
+|"Yellow"|0|0|0|1|0|0|0|0|
+|"Green"|0|0|0|0|1|0|0|0|
+|"Black"|0|0|0|0|0|1|0|0|
+|"Purple"|0|0|0|0|0|0|1|0|
+|"Brown"|0|0|0|0|0|0|0|1|
+
+It is the one-hot vector, not the string or the index number, that gets passed to the feature vector. The model learns a separate weight for each element of the feature vector.
+
+**Note:** In a true one-hot encoding, only one element has the value 1.0. In a variant known as **multi-hot encoding**, multiple values can be 1.0.
+
+The following illustration suggests the various transformations in the vocabulary representation:
+
+![[Pasted image 20251128194623.png]]
+**Figure 3.** The end-to-end process to map categories to feature vectors.
+
+### Sparse representation
+
+A feature whose values are predominantly zero (or empty) is termed a [**sparse feature**](https://developers.google.com/machine-learning/glossary#sparse-feature). Many categorical features, such as `car_color`, tend to be sparse features. [**Sparse representation**](https://developers.google.com/machine-learning/glossary#sparse-representation) means storing the _position_ of the 1.0 in a sparse vector. For example, the one-hot vector for `"Blue"` is:
+
+> [0, 0, 1, 0, 0, 0, 0, 0]
+
+Since the `1` is in position 2 (when starting the count at 0), the sparse representation for the preceding one-hot vector is:
+
+> 2
+
+Notice that the sparse representation consumes far less memory than the eight-element one-hot vector. Importantly, the model must _train_ on the one-hot vector, not the sparse representation.
+
+**Note:** The sparse representation of a multi-hot encoding stores the positions of _all_ the nonzero elements. For example, the sparse representation of a car that is both `"Blue"` and `"Black"` is `2, 5`.
+
+## Outliers in categorical data
+
+Like numerical data, categorical data also contains outliers. Suppose `car_color` contains not only the popular colors, but also some rarely used outlier colors, such as `"Mauve"` or `"Avocado"`. Rather than giving each of these outlier colors a separate category, you can lump them into a single "catch-all" category called _out-of-vocabulary (OOV)_. In other words, all the outlier colors are binned into a single outlier bucket. The system learns a single weight for that outlier bucket.
+
+## Encoding high-dimensional categorical features
+
+Some categorical features have a high number of dimensions, such as those in the following table:
+
+|Feature name|# of categories|Sample categories|
+|---|---|---|
+|words_in_english|~500,000|"happy", "walking"|
+|US_postal_codes|~42,000|"02114", "90301"|
+|last_names_in_Germany|~850,000|"Schmidt", "Schneider"|
+
+When the number of categories is high, one-hot encoding is usually a bad choice. _Embeddings_, detailed in a separate [Embeddings module](https://developers.google.com/machine-learning/crash-course/embeddings), are usually a much better choice. Embeddings substantially reduce the number of dimensions, which benefits models in two important ways:
+
+- The model typically trains faster.
+- The built model typically infers predictions more quickly. That is, the model has lower latency.
+
+[**Hashing**](https://developers.google.com/machine-learning/glossary#hashing) (also called the _hashing trick_) is a less common way to reduce the number of dimensions.
+
+**Click here to learn about hashing**
+
+In brief, hashing maps a category (for example, a color) to a small integer—the number of the "bucket" that will hold that category.
+
+In detail, you implement a hashing algorithm as follows:
+
+1. Set the number of bins in the vector of categories to N, where N is less than the total number of remaining categories. As an arbitrary example, say N = 100.
+2. Choose a hash function. (Often, you will choose the range of hash values as well.)
+3. Pass each category (for example, a particular color) through that hash function, generating a hash value, say 89237.
+4. Assign each bin an index number of the output hash value modulo N. In this case, where N is 100 and the hash value is 89237, the modulo result is 37 because 89237 % 100 is 37.
+5. Create a one-hot encoding for each bin with these new index numbers.
+
+For more details about hashing data, see the [Randomization](https://developers.google.com/machine-learning/crash-course/production-ml-systems/monitoring#randomization) section of the [Production machine learning systems](https://developers.google.com/machine-learning/crash-course/production-ml-systems/monitoring) module.
+
+# Categorical data: Common issues
+
+Numerical data is often recorded by scientific instruments or automated measurements. Categorical data, on the other hand, is often categorized by human beings or by machine learning (ML) models. _Who_ decides on categories and labels, and _how_ they make those decisions, affects the reliability and usefulness of that data.
+
+## Human raters
+
+Data manually labeled by human beings is often referred to as _gold labels_, and is considered more desirable than machine-labeled data for training models, due to relatively better data quality.
+
+This doesn't necessarily mean that any set of human-labeled data is of high quality. Human errors, bias, and malice can be introduced at the point of data collection or during data cleaning and processing. Check for them before training.
+
+Any two human beings may label the same example differently. The difference between human raters' decisions is called [**inter-rater agreement**](https://developers.google.com/machine-learning/glossary#inter-rater-agreement). You can get a sense of the variance in raters' opinions by using multiple raters per example and measuring inter-rater agreement.
+
+**Click to learn about inter-rater agreement metrics**
+
+The following are ways to measure inter-rater agreement:
+
+- Cohen's kappa and variants
+- Intra-class correlation (ICC)
+- Krippendorff's alpha
+
+For details on Cohen's kappa and intra-class correlation, see [Hallgren 2012](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3402032/). For details on Krippendorff's alpha, see [Krippendorff 2011](https://www.asc.upenn.edu/sites/default/files/2021-03/Computing%20Krippendorff%27s%20Alpha-Reliability.pdf).
+
+## Machine raters
+
+Machine-labeled data, where categories are automatically determined by one or more classification models, is often referred to as _silver labels_. Machine-labeled data can vary widely in quality. Check it not only for accuracy and biases but also for violations of common sense, reality, and intention. For example, if a computer-vision model mislabels a photo of a [chihuahua as a muffin](https://www.freecodecamp.org/news/chihuahua-or-muffin-my-search-for-the-best-computer-vision-api-cbda4d6b425d/), or a photo of a muffin as a chihuahua, models trained on that labeled data will be of lower quality.
+
+Similarly, a sentiment analyzer that scores neutral words as -0.25, when 0.0 is the neutral value, might be scoring all words with an additional negative bias that is not actually present in the data. An oversensitive toxicity detector may falsely flag many neutral statements as toxic. Try to get a sense of the quality and biases of machine labels and annotations in your data before training on it.
+
+## High dimensionality
+
+Categorical data tends to produce high-dimensional feature vectors; that is, feature vectors having a large number of elements. High dimensionality increases training costs and makes training more difficult. For these reasons, ML experts often seek ways to reduce the number of dimensions prior to training.
+
+For natural-language data, the main method of reducing dimensionality is to convert feature vectors to embedding vectors. This is discussed in the [Embeddings module](https://developers.google.com/machine-learning/crash-course/embeddings) later in this course.
+
+# Categorical data: Feature crosses
+
+[**Feature crosses**](https://developers.google.com/machine-learning/glossary#feature-cross) are created by crossing (taking the Cartesian product of) two or more categorical or bucketed features of the dataset. Like [polynomial transforms](https://developers.google.com/machine-learning/crash-course/numerical-data/polynomial-transforms), feature crosses allow linear models to handle nonlinearities. Feature crosses also encode interactions between features.
+
+For example, consider a leaf dataset with the categorical features:
+
+- `edges`, containing values `smooth`, `toothed`, and `lobed`
+- `arrangement`, containing values `opposite` and `alternate`
+
+Assume the order above is the order of the feature columns in a one-hot representation, so that a leaf with `smooth` edges and `opposite` arrangement is represented as `{(1, 0, 0), (1, 0)}`.
+
+The feature cross, or Cartesian product, of these two features would be:
+
+`{Smooth_Opposite, Smooth_Alternate, Toothed_Opposite, Toothed_Alternate, Lobed_Opposite, Lobed_Alternate}`
+
+where the value of each term is the product of the base feature values, such that:
+
+- `Smooth_Opposite = edges[0] * arrangement[0]`
+- `Smooth_Alternate = edges[0] * arrangement[1]`
+- `Toothed_Opposite = edges[1] * arrangement[0]`
+- `Toothed_Alternate = edges[1] * arrangement[1]`
+- `Lobed_Opposite = edges[2] * arrangement[0]`
+- `Lobed_Alternate = edges[2] * arrangement[1]`
+
+For example, if a leaf has a `lobed` edge and an `alternate` arrangement, the feature-cross vector will have a value of 1 for `Lobed_Alternate`, and a value of 0 for all other terms:
+
+`{0, 0, 0, 0, 0, 1}`
+
+This dataset could be used to classify leaves by tree species, since these characteristics do not vary within a species.
+
+**Click here to compare polynomial transforms with feature crosses**
+
+Feature crosses are somewhat analogous to [Polynomial transforms](https://developers.google.com/machine-learning/crash-course/numerical-data/polynomial-transforms). Both combine multiple features into a new synthetic feature that the model can train on to learn nonlinearities. Polynomial transforms typically combine numerical data, while feature crosses combine categorical data.
+
+## When to use feature crosses
+
+Domain knowledge can suggest a useful combination of features to cross. Without that domain knowledge, it can be difficult to determine effective feature crosses or polynomial transforms by hand. It's often possible, if computationally expensive, to use [neural networks](https://developers.google.com/machine-learning/crash-course/neural-networks) to _automatically_ find and apply useful feature combinations during training.
+
+Be careful—crossing two sparse features produces an even sparser new feature than the two original features. For example, if feature A is a 100-element sparse feature and feature B is a 200-element sparse feature, a feature cross of A and B yields a 20,000-element sparse feature.
+
+# Categorical data: Feature cross exercises
+
+Playground is an interactive application that lets you manipulate various aspects of training and testing a machine learning model. With Playground, you can select features and adjust hyperparameters, and then discover how your choices influence a model.
+
+This page contains two exercises using the embedded Playground widgets below the instructions.
+
+## Exercise 1: A basic feature cross
+
+For this exercise, focus on the following parts of the Playground user interface:
+
+- Underneath FEATURES, notice the three potential model features:
+    - x1
+    - x2
+    - x1x2
+- Underneath OUTPUT, you'll see a square containing orange and blue dots. Imagine that you're looking at a square forest, where orange dots mark the position of sick trees and blue dots mark the position of healthy trees.
+- Between FEATURES and OUTPUT, if you look very closely, you'll see three faint dashed lines connecting each feature to the output. The width of each dashed line symbolizes the weight currently associated with each feature. These lines are very faint because the starting weight for each feature is initialized to 0. As the weight grows or shrinks, so will the thickness of these lines.
+
+**Task 1:** Explore Playground by doing the following:
+
+1. Click on the faint line that connects feature x1 to the output. A popup appears.
+2. In the popup, enter the weight `1.0`.
+3. Press Enter.
+
+Notice the following:
+
+- The dashed line for x1 becomes thicker as the weight increases from 0 to 1.0.
+- An orange and blue background now appears.
+    - The orange background is the model's guesses as to where the sick trees are.
+    - The blue background is the model's guesses as to where the healthy trees are. The model is doing a terrible job; about half of the model's guesses are wrong.
+- Because the weight is 1.0 for x1 and 0 for the other features, the model matches x1's values exactly.
+![[Pasted image 20251129072735.png]]
+**Task 2:** Change the weights of any or all of the three features so that the model (the background colors) successfully predicts sick and healthy trees. The solution appears just below Playground.
+
+---
+
+---
+
+**Click here for the solution to Task 2**
+
+## Exercise 2: A more sophisticated feature cross
+
+For the second exercise, look at the arrangement of orange dots (sick trees) and blue dots (healthy trees) in the output model, noticing the following:
+
+- The dots form roughly spherical patterns.
+- The arrangement of dots is noisy; for example, notice the occasional blue dots in the outer sphere of orange dots. Consequently, even a great model is unlikely to correctly predict each dot.
+
+**Task 1:** Explore the Playground UI by doing the following:
+
+1. Click the Run/Pause button, which is a white triangle inside a black circle. Playground will begin training the model; observe the Epochs counter increasing.
+2. After the system has trained for at least 300 epochs, press that same Run/Pause button to pause the training.
+3. Look at the model. Is the model making good predictions? In other words, are the blue dots generally surrounded by a blue background, and are the orange dots generally surrounded by an orange background?
+4. Examine the value of Test loss, which appears just below OUTPUT. Is this value closer to 1.0 (higher loss) or closer to 0 (lower loss)?
+5. Reset Playground by pressing the curvy arrow to the left of the Run/Pause button.
+![[Pasted image 20251129072950.png]]
+**Task 2:** Build a better model by doing the following:
+
+1. Select or deselect any combination of the five possible features.
+2. Adjust the learning rate.
+3. Train the system for at least 500 epochs.
+4. Examine the value of Test loss. Can you get a Test loss less than 0.2?
+
+![[Pasted image 20251129073620.png]]
+
+![[Pasted image 20251129073655.png]]
+**Click here for the solution to Task 1**
+
+The model is terrible. Notice, for example, that many of the orange dots are swimming in a sea of blue. Furthermore, Test loss is very high.
+
+**Click here for the solution to Task 2**
+
+You can improve model performance by doing the following:
+
+- Select both polynomial transforms (x12 and x22) and unselect the other three possible features.
+- Reduce the learning rate to `0.001` or lower.

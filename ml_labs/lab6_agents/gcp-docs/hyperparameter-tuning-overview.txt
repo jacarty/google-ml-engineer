@@ -1,0 +1,303 @@
+Source: https://cloud.google.com/vertex-ai/docs/training/hyperparameter-tuning-overview
+Downloaded: 2026-02-22
+
+Home
+Documentation
+AI and ML
+Vertex AI
+Send feedback
+Overview of hyperparameter tuning
+Stay organized with collections
+Save and categorize content based on your preferences.
+Hyperparameter tuning
+takes advantage of the processing infrastructure of Google Cloud to test
+different hyperparameter configurations when training your model. It can give
+you optimized values for hyperparameters, which maximizes your model's
+predictive accuracy.
+What's a hyperparameter?
+Hyperparameters contain the data that govern the training process itself.
+Your training application handles three categories of data as it trains your
+model:
+Your
+input data
+(also called training data) is a collection of individual
+records (instances) containing the features important to your machine
+learning problem. This data is used during training to configure your model
+to accurately make inferences about new instances of similar data. However,
+the values in your input data never directly become part of your model.
+Your model's
+parameters
+are the variables that your chosen machine
+learning technique uses to adjust to your data. For example, a deep neural
+network (DNN) is composed of processing nodes (neurons), each with an
+operation performed on data as it travels through the network. When your DNN
+is trained, each node has a weight value that tells your model how much
+impact it has on the final inference. Those weights are an example of your
+model's parameters. In many ways, your model's parameters
+are
+the
+model—they are what distinguishes your particular model from other
+models of the same type working on similar data.
+Your
+hyperparameters
+are the variables that govern the training process
+itself. For example, part of designing a DNN is deciding how many hidden
+layers of nodes to use between the input and output layers, and how many
+nodes each hidden layer should use. These variables are not directly
+related to the training data. They are configuration variables. Note that
+parameters change during a training job, while hyperparameters are usually
+constant during a job.
+Your model
+parameters
+are optimized (you could say "tuned") by the training
+process: you run data through the operations of the model, compare the resulting
+inference with the actual value for each data instance, evaluate the accuracy,
+and adjust until you find the best values.
+Hyperparameters
+are tuned by
+running your whole training job, looking at the aggregate accuracy, and
+adjusting. In both cases, you are modifying the composition of your model
+to find the best combination to handle your problem.
+Without an automated technology like Vertex AI hyperparameter
+tuning, you need to make manual adjustments to the hyperparameters over the
+course of many training runs to arrive at the optimal values. Hyperparameter
+tuning makes the process of determining the best hyperparameter settings easier
+and less tedious.
+How hyperparameter tuning works
+Hyperparameter tuning works by running multiple
+trials
+of your training
+application with values for your chosen hyperparameters, set within limits you
+specify. Vertex AI keeps track of the results of each
+trial and makes adjustments for subsequent trials. When the job is finished, you
+can get a summary of all the trials along with the most effective configuration
+of values according to the criteria you specify.
+Hyperparameter tuning requires explicit communication between the
+Vertex AI and your training application. Your
+training application defines all the information that your model needs.
+You define the hyperparameters (variables) that you want to adjust, and
+target variables that are used to evaluate each trial.
+Learn more about Bayesian optimization for hyperparameter
+tuning
+.
+In addition to Bayesian optimization, Vertex AI optimizes
+across hyperparameter tuning jobs. If you are doing hyperparameter tuning
+against similar models, changing only the objective function or adding
+a new input column, Vertex AI is able to improve over time and
+make the hyperparameter tuning more efficient.
+What hyperparameter tuning optimizes
+Hyperparameter tuning optimizes target variables that you specify, called
+hyperparameter metrics. Model accuracy, as calculated from an evaluation pass,
+is a common metric. Metrics must be numeric.
+When configuring a hyperparameter tuning job, you define the name and goal of
+each metric. The goal specifies whether you want to tune your model to maximize
+or minimize the value of this metric.
+How Vertex AI gets your metrics
+Use the
+cloudml-hypertune
+Python package
+to pass
+metrics to Vertex AI. This library provides helper functions for
+reporting metrics to Vertex AI.
+Learn more about reporting hyperparameter metrics
+.
+The flow of hyperparameter values
+Without hyperparameter tuning, you can set your hyperparameters by whatever
+means you like in your training application. For example, you can configure the
+hyperparameters by passing command-line arguments to your main application
+module, or feed them to your application in a configuration file.
+When you use hyperparameter tuning, you must use the following procedure to set
+the values of the hyperparameters that you're using for tuning:
+Define a command-line argument in your main training module for each tuned
+hyperparameter.
+Use the value passed in those arguments to set the corresponding
+hyperparameter in your application's code.
+When you configure a hyperparameter tuning job, you define each
+hyperparameter to tune, its data type, and the range of values to try. You
+identify each hyperparameter using the same name as the corresponding argument
+you defined in your main module. The training service includes command-line
+arguments using these names when it runs your application.
+Learn more about the requirements for parsing command-line
+arguments
+.
+Select hyperparameters to tune
+There is little universal advice to give about how to choose
+which hyperparameters you should tune. If you have experience with the machine
+learning technique that you're using, you may have insight into how its
+hyperparameters behave. You may also be able to find advice from machine
+learning communities.
+However you choose them, it's important to understand the implications. Every
+hyperparameter that you choose to tune has the potential to
+increase the number of trials required for a successful tuning job. When you
+run a hyperparameter tuning job on Vertex AI,
+the amount you're
+charged is based on the duration of the trials initiated by your hyperparameter
+tuning job
+. A careful choice of hyperparameters to tune can reduce
+the time and cost of your hyperparameter tuning job.
+Hyperparameter data types
+In a
+ParameterSpec
+object, you specify the hyperparameter
+data type as an instance of a parameter value specification. The following
+table lists the supported parameter value specifications.
+Type
+Data type
+Value ranges
+Value data
+DoubleValueSpec
+DOUBLE
+minValue
+&
+maxValue
+Floating-point values
+IntegerValueSpec
+INTEGER
+minValue
+&
+maxValue
+Integer values
+CategoricalValueSpec
+CATEGORICAL
+categoricalValues
+List of category strings
+DiscreteValueSpec
+DISCRETE
+discreteValues
+List of values in ascending order
+Scale hyperparameters
+In a
+ParameterSpec
+object, you can specify that scaling
+should be performed on this hyperparameter. Scaling is recommended for the
+DOUBLE and INTEGER data types. The available
+scaling types
+are:
+SCALE_TYPE_UNSPECIFIED
+: No scaling is applied to this hyperparameter.
+UNIT_LINEAR_SCALE
+: Scales the feasible space linearly 0 through 1.
+UNIT_LOG_SCALE
+: Scales the feasible space logarithmically 0 through 1.
+The entire feasible space must be strictly positive.
+UNIT_REVERSE_LOG_SCALE
+: Scales the feasible space "reverse" logarithmically
+0 through 1. The result is that values close to the top of the feasible
+space are spread out more than points near the bottom. The entire feasible
+space must be strictly positive.
+Conditional hyperparameters
+The
+ConditionalParameterSpec
+object lets you add
+hyperparameters to a trial when the value of its parent hyperparameter matches a
+condition that you specify.
+For example, you could define a hyperparameter tuning job with the goal of
+finding an optimal model using either linear regression or a deep neural
+network (DNN). To let your tuning job specify the training method, you define
+a categorical hyperparameter named
+training_method
+with the following options:
+LINEAR_REGRESSION
+and
+DNN
+. When the
+training_method
+is
+LINEAR_REGRESSION
+, your tuning job must specify a hyperparameter for the
+learning rate
+. When the
+training_method
+is
+DNN
+, your tuning job
+must specify parameters for the
+learning rate
+and the
+number of hidden layers
+.
+Since the number of hidden layers is applicable only when a trial's
+training_method
+is
+DNN
+, you define a conditional parameter that adds
+a hyperparameter named
+num_hidden_layers
+when the
+training_method
+is
+DNN
+.
+Since the learning rate is used by both
+training_method
+options, you must
+decide if this conditional hyperparameter should be shared. If the
+hyperparameter is shared, the tuning job uses what it has learned from
+LINEAR_REGRESSION
+and
+DNN
+trials to tune the learning rate. In this case,
+it makes more sense to have separate learning rates for each
+training_method
+,
+since the learning rate for training a model using
+LINEAR_REGRESSION
+shouldn't
+affect the learning rate for training a model using
+DNN
+. So, you define the
+following conditional hyperparameters:
+A hyperparameter named
+learning_rate
+that is added when the
+training_method
+is
+LINEAR_REGRESSION
+.
+A hyperparameter named
+learning_rate
+that is added when the
+training_method
+is
+DNN
+.
+Conditional hyperparameters let you define the hyperparameters for your tuning
+job as a graph. This lets you tune your training process using different
+training techniques, each with their own hyperparameter dependencies.
+Search algorithms
+You can specify a search algorithm in the
+StudySpec
+object.
+If you don't specify an algorithm, your job uses the default
+Vertex AI algorithm. The default algorithm applies Bayesian
+optimization to arrive at the optimal solution with a more effective search
+over the parameter space.
+Available values:
+ALGORITHM_UNSPECIFIED
+: Same as not specifying an algorithm.
+Vertex AI chooses the best search algorithm between Gaussian
+process bandits, linear combination search, or their variants.
+GRID_SEARCH
+: A grid search within the feasible space. This option is
+particularly useful if you want to specify a quantity of trials that is
+greater than the number of points in the feasible space. In such cases, if
+you don't specify a grid search, the Vertex AI default
+algorithm may generate duplicate suggestions. To use grid search, all
+parameters must be of type
+INTEGER
+,
+CATEGORICAL
+, or
+DISCRETE
+.
+RANDOM_SEARCH
+: A random search within the feasible space.
+What's next
+Learn how to
+implement hyperparameter tuning for your training
+jobs
+Read a blog post about
+Bayesian optimization and hyperparameter
+tuning
+.
+Send feedback
