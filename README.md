@@ -11,7 +11,16 @@ Hands-on labs and notes for the [Google Cloud Professional Machine Learning Engi
 | Lab 3 | Hyperparameter Tuning with Vertex AI Vizier | ✅ Complete |
 | Lab 4 | Model Monitoring & Drift Detection | ✅ Complete |
 | Lab 5 | MLOps Services | ✅ Complete |
-| Lab 6 | AI Agents | 🔄 In Progress |
+| Lab 6 | Vertex AI Agent Builder (RAG) | ✅ Complete |
+| Lab 7 | Text Classification with Stack Overflow Data | ✅ Complete |
+| Lab 8 | Image Classification with Satellite Data | ✅ Complete |
+| Lab 9 | Time Series Forecasting | 📋 Planned |
+| Lab 10 | Vertex AI Pipelines | 📋 Planned |
+| Mini-Lab A | Custom Prediction Routine (CPR) | 📋 Planned |
+| Mini-Lab B | Explainability (Sampled Shapley) | 📋 Planned |
+| Mini-Lab C | TFRecord Pipeline | 📋 Planned |
+| Mini-Lab D | Shadow Deployment | 📋 Planned |
+| Mini-Lab E | Dataflow + RunInference | 📋 Planned |
 
 See [`ml_labs/ml_labs_plan.md`](ml_labs/ml_labs_plan.md) for the full study plan.
 

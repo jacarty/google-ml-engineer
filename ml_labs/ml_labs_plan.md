@@ -258,9 +258,9 @@ Target specific gaps identified from practice questions. Each is 1-3 hours.
 | Agent Builder / RAG | 6 | ✅ |
 | Batch Prediction | 7, 9 | ✅ / 📋 |
 | Text / NLP Pipeline | 7 | ✅ |
-| Image / Vision Pipeline | 8 | 📋 |
-| Vision API (pre-trained) | 8 | 📋 |
-| Transfer Learning | 8 | 📋 |
+| Image / Vision Pipeline | 8 | ✅ |
+| Vision API (pre-trained) | 8 | ✅ |
+| Transfer Learning | 8 | ✅ |
 | Time Series / ARIMA_PLUS | 9 | 📋 |
 | LSTM / Sequence Models | 9 | 📋 |
 | Vertex AI Pipelines | 10 | 📋 |
