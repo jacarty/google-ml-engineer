@@ -11,23 +11,22 @@
 |-----|--------|-------------|
 | Lab 1: BigQuery ML (Feature Engineering) | ✅ Complete | Boosted trees: 86.23% accuracy |
 | Lab 2: Vertex AI Pipeline (End-to-End) | ✅ Complete | Custom beat AutoML at 0.27% of the cost |
-| Lab 3: Hyperparameter Tuning | ✅ Complete | Manual vs Bayesian optimization |
+| Lab 3: Hyperparameter Tuning | ✅ Complete | Manual vs Bayesian optimization; best 87.59% |
 | Lab 4: Monitoring & Drift Detection | ✅ Complete | Drift detection + response runbook |
 | Lab 5: MLOps Services | ✅ Complete | Feature Store, Experiments, Metadata |
 | Lab 6: Agent Builder (RAG) | ✅ Complete | Working RAG agent with citations |
-| Lab 7: Text Classification | ✅ Complete | TF-IDF baseline + batch prediction |
-| Lab 8: Image Classification | 📋 Planned | — |
-| Lab 9: Time Series Forecasting | 📋 Planned | — |
+| Lab 7: Text Classification | ✅ Complete | TF-IDF baseline (83.8%) beat neural (81%) |
+| Lab 8: Image Classification | ✅ Complete | MobileNetV2 transfer learning; AutoML ~96.4%, Custom ~97.83% |
+| Lab 9: Time Series Forecasting | ✅ Complete | ARIMA_PLUS vs GBT vs LSTM comparison |
 | Lab 10: Vertex AI Pipelines | 📋 Planned | — |
 | Mini-Labs: A-E | 📋 Planned | — |
 
 ## Suggested Lab Order (Remaining)
 
-1. **Mini-Lab A (CPR)** — Quick win, directly addresses exam gap on abstraction levels
-2. **Lab 9 (Time Series + Feature Store)** — BQML vs custom, ML.PREDICT, Feature Store second touchpoint
-3. **Lab 8 (Image)** — New modality, transfer learning, Vision API
-4. **Lab 10 (Pipelines)** — Ties everything together with orchestration
-5. **Mini-Labs B–E** — Fill remaining gaps as time allows
+1. **Lab 10 (Pipelines)** — Ties everything together with orchestration
+2. **Mini-Lab A (CPR)** — Quick win, directly addresses exam gap on abstraction levels
+3. **Mini-Lab E (Dataflow + RunInference)** — High-priority exam gap
+4. **Mini-Labs B–D** — Fill remaining gaps as time allows
 
 ---
 
@@ -117,42 +116,63 @@ Every lab assumes all resources were deleted after the previous lab. Each lab in
 
 ---
 
-### Lab 8 — Image Classification with Satellite Data 📋
+### Lab 8 — Image Classification with Satellite Data ✅
 
 **Dataset:** EuroSAT via TensorFlow Datasets (10 land use classes, 27k satellite images)  
 **Task:** Multi-class satellite image classification  
-**Container:** Discuss prebuilt vs custom (likely prebuilt TF + prediction container)  
+**Container:** Prebuilt TF + custom prediction container  
 **Exam Relevance:** Vision API vs AutoML vs custom, transfer learning, tf.data pipelines
 
-**Parts:**
-- Setup — GCS bucket, container strategy discussion, enable Vision API
-- Data sourcing and preparation — load via TFDS, upload to GCS, BQ metadata table
-- Pre-trained API baseline — evaluate Vision API on satellite classes, document accuracy/cost/latency
-- Transfer learning with custom training — MobileNetV2 frozen → fine-tuned, 3+ Experiment runs
-- Online prediction with endpoint — deploy best model, compare to Vision API
-- Metadata, lineage, and architecture doc — decision matrix: Vision API vs AutoML vs custom
+**Results:**
+- AutoML: ~96.4% accuracy
+- Custom MobileNetV2 fine-tuned: ~97.83% accuracy
+- Base64 serving pattern to solve gRPC/REST payload limits
 
-**New Skills:** Image pipelines, Vision API evaluation, transfer learning, tf.data, pre-trained vs custom decision making
+**Key Learnings:**
+- Baking preprocessing into SavedModel graph avoids payload size issues
+- `tf.io.decode_base64` requires URL-safe base64 without padding
+- Transfer learning (freeze → fine-tune) is highly effective for domain-specific image tasks
+
+**New Skills:** Image pipelines, transfer learning, tf.data, base64 serving, pre-trained vs custom decision making
 
 ---
 
-### Lab 9 — Time Series Forecasting with NOAA Weather Data 📋
+### Lab 9 — Time Series Forecasting with NOAA Weather Data ✅
 
 **Dataset:** `bigquery-public-data.noaa_gsod` (Global Surface Summary of the Day)  
 **Task:** Forecast daily temperature for JFK Airport  
-**Container:** Discuss per model type (prebuilt TF for LSTM, prebuilt/custom sklearn for GBT, none for BQML)  
-**Exam Relevance:** ARIMA_PLUS, temporal features, BQML vs custom, Feature Store, ML.PREDICT
+**Container:** Prebuilt sklearn 1.0 for GBT, prebuilt TF 2.15 for LSTM, none for BQML  
+**Exam Relevance:** ARIMA_PLUS, temporal features, BQML vs custom, ML.FORECAST, ML.EXPLAIN_FORECAST, time-aware splitting, regression metrics
 
 **Parts:**
-- Setup — GCS bucket, container strategy for each model type
-- Data exploration in BigQuery — temporal feature engineering (lag, rolling averages, cyclical encoding), time-based splits
-- BigQuery ML forecasting — ARIMA_PLUS model, ML.FORECAST, ML.EXPLAIN_FORECAST
-- Custom training comparison — Gradient boosting vs LSTM, all three models in Experiments
-- Batch prediction with BQML — ML.PREDICT in BigQuery, compare to Vertex AI batch
-- Feature Store for temporal features — register features, Online Store, train from Feature Store vs CSV
-- Metadata and lineage — trace NOAA → BQ features → Feature Store → training → predictions
+- Setup + Data Exploration — NOAA GSOD query, cleaning (9999.9 missing indicators), temporal feature engineering
+- BigQuery ML ARIMA_PLUS — ML.FORECAST with confidence intervals, ML.EXPLAIN_FORECAST decomposition
+- Custom GBT — time series as tabular regression, prebuilt sklearn container on Vertex AI
+- Custom LSTM — 14-day sliding windows, prebuilt TF 2.15 container on Vertex AI
+- Comparison + ML.PREDICT + Metadata + Cleanup
 
-**New Skills:** Time series features, BQML ARIMA_PLUS, LSTM, time-aware splitting, ML.PREDICT, Feature Store with temporal data
+**Results:**
+
+| Model | Test RMSE (°F) | Test MAE (°F) | Test MAPE (%) |
+|-------|---------------|--------------|--------------|
+| ARIMA_PLUS (BQML) | 7.07 | 5.46 | 11.2 |
+| Gradient Boosted Trees | 2.36 | 1.79 | 3.5 |
+| LSTM | 3.95 | 3.05 | 6.3 |
+
+**Key Learnings:**
+- GBT dominates when lag features provide yesterday's actual temperature (one-step-ahead)
+- ARIMA_PLUS does true multi-step forecasting with just date + temp — 7°F RMSE over 4 years is respectable
+- LSTM learns temporal patterns from sequences without manual lag features, but can't beat GBT with explicit lags
+- ML.PREDICT does NOT work with ARIMA models — use ML.FORECAST instead
+- ML.EXPLAIN_FORECAST decomposes predictions into trend, seasonal, and holiday components (unique to BQML)
+- Time-aware splitting is mandatory — random splits cause data leakage
+- Cyclical encoding (sin/cos) essential for periodic features
+- Prebuilt sklearn 1.0 container works; sklearn 1.3+ has broken google-cloud-bigquery dependency
+- TF SavedModel format from Vertex AI (Keras 2) requires TFSMLayer to load locally in Keras 3
+- TensorFlow on Apple Silicon M4 is extremely slow for training — submit to Vertex AI instead
+- Python 3.13 breaks google-auth REST transport; use gRPC client directly for Metadata operations
+
+**New Skills:** Temporal feature engineering (lag, rolling avg, cyclical encoding), ARIMA_PLUS, ML.FORECAST, ML.EXPLAIN_FORECAST, LSTM windowed data preparation, regression metrics (RMSE, MAE, MAPE), time-aware splitting
 
 ---
 
@@ -232,6 +252,7 @@ Target specific gaps identified from practice questions. Each is 1-3 hours.
 | Custom architecture | ❌ No | ❌ No | ✅ Best | N/A | N/A |
 | Time-to-market priority | ✅ Fast | ✅ Fast | ❌ Slow | ✅ Fastest | ✅ Fast |
 | Q&A over internal docs | N/A | N/A | ❌ Overkill | N/A | ✅ Best |
+| Time series forecasting | ✅ ARIMA_PLUS | ⚠️ Limited | ✅ LSTM/GBT | N/A | N/A |
 
 **Additional Topics:**
 - MLOps patterns: CI/CD for ML, A/B testing, shadow deployments, champion/challenger, Feature Store integration
@@ -245,24 +266,24 @@ Target specific gaps identified from practice questions. Each is 1-3 hours.
 
 | Service | Lab(s) | Status |
 |---------|--------|--------|
-| BigQuery ML | 1, 9 | ✅ / 📋 |
+| BigQuery ML | 1, 9 | ✅ |
 | Vertex AI Datasets | 2 | ✅ |
-| AutoML Training | 2 | ✅ |
-| Custom Training | 2, 7, 8, 9 | ✅ / 📋 |
-| Model Deployment / Endpoints | 2, 8 | ✅ / 📋 |
+| AutoML Training | 2, 8 | ✅ |
+| Custom Training | 2, 7, 8, 9 | ✅ |
+| Model Deployment / Endpoints | 2, 8 | ✅ |
 | Hyperparameter Tuning | 3 | ✅ |
 | Model Monitoring | 4 | ✅ |
-| Feature Store | 5, 9 | ✅ / 📋 |
-| Experiments | 5, 7, 8, 9 | ✅ / 📋 |
+| Feature Store | 5 | ✅ |
+| Experiments | 5, 7, 8, 9 | ✅ |
 | Metadata / Lineage | 5, 7, 8, 9, 10 | ✅ / 📋 |
 | Agent Builder / RAG | 6 | ✅ |
-| Batch Prediction | 7, 9 | ✅ / 📋 |
+| Batch Prediction | 7 | ✅ |
 | Text / NLP Pipeline | 7 | ✅ |
 | Image / Vision Pipeline | 8 | ✅ |
-| Vision API (pre-trained) | 8 | ✅ |
 | Transfer Learning | 8 | ✅ |
-| Time Series / ARIMA_PLUS | 9 | 📋 |
-| LSTM / Sequence Models | 9 | 📋 |
+| Time Series / ARIMA_PLUS | 9 | ✅ |
+| ML.FORECAST / ML.EXPLAIN_FORECAST | 9 | ✅ |
+| LSTM / Sequence Models | 9 | ✅ |
 | Vertex AI Pipelines | 10 | 📋 |
 | Conditional Deployment | 10 | 📋 |
 | CPR | Mini-Lab A | 📋 |
@@ -302,10 +323,17 @@ Target specific gaps identified from practice questions. Each is 1-3 hours.
 
 - **Algorithm selection >> feature engineering:** Boosted trees gave 9.7x more improvement than manual feature engineering (Lab 1)
 - **Custom can beat managed:** Custom training outperformed AutoML at 0.27% of the cost (Lab 2)
-- **Container consistency matters:** Python/TF version mismatches between training and serving cause silent accuracy drops (Labs 2, 7)
+- **Container consistency matters:** Python/TF version mismatches between training and serving cause silent accuracy drops (Labs 2, 7, 8, 9)
 - **Drift ≠ degradation:** Statistical drift doesn't always correlate with performance impact (Lab 4)
 - **Simpler models can win:** TF-IDF + logistic regression outperformed neural embeddings for keyword-driven classification (Lab 7)
-- **Prebuilt-first:** Google prebuilt containers reduce Dockerfile maintenance but require version awareness (Lab 7)
+- **Prebuilt-first:** Google prebuilt containers reduce Dockerfile maintenance but require version awareness (Labs 7, 9)
+- **Transfer learning is powerful:** MobileNetV2 fine-tuning hit 97.83% on satellite imagery with minimal data (Lab 8)
+- **Base64 serving solves payload limits:** Baking decode+preprocess into SavedModel avoids gRPC/REST size limits (Lab 8)
+- **ARIMA_PLUS for SQL users:** Zero-code time series forecasting with decomposition — exam favorite (Lab 9)
+- **ML.FORECAST ≠ ML.PREDICT:** ARIMA models use ML.FORECAST; supervised BQML models use ML.PREDICT (Lab 9)
+- **GBT beats LSTM with good features:** Tabular regression with lag features outperformed sequence model for one-step-ahead prediction (Lab 9)
+- **TF on Apple Silicon is slow:** Submit TF training to Vertex AI rather than running locally on Mac (Lab 9)
+- **Python 3.13 compatibility:** google-auth REST transport breaks; use gRPC client directly (Lab 9)
 
 ---
 
