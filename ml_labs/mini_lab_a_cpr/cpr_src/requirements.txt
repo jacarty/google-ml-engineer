@@ -1,0 +1,8 @@
+# Serving dependencies for CPR container
+# These must be compatible with the base image (python:3.10-slim)
+scikit-learn==1.3.2
+pandas==2.1.4
+numpy==1.26.2
+joblib==1.3.2
+google-cloud-storage==2.14.0
+google-cloud-aiplatform[prediction]
