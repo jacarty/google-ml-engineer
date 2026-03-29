@@ -12,7 +12,7 @@
 
 | Project | Domain | Status | Key Outcome |
 |---------|--------|--------|-------------|
-| Project 1: Support Ticket Routing | Text / NLP | ⬜ Not Started | — |
+| Project 1: Support Ticket Routing | Text / NLP | ✅ Complete | Pipeline (balanced weights) | Weighted F1 | 0.5156 |
 | Project 2: Serengeti Wildlife Species ID | Image / Vision | ⬜ Not Started | — |
 | Project 3: Bitcoin Volatility Forecasting | Time Series / Finance | ⬜ Not Started | — |
 

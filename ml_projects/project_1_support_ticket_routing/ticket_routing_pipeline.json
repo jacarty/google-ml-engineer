@@ -1,0 +1,270 @@
+{
+  "components": {
+    "comp-condition-1": {
+      "dag": {
+        "tasks": {
+          "deploy-model": {
+            "cachingOptions": {
+              "enableCache": true
+            },
+            "componentRef": {
+              "name": "comp-deploy-model"
+            },
+            "inputs": {
+              "parameters": {
+                "model_gcs_path": {
+                  "componentInputParameter": "pipelinechannel--model_gcs_path"
+                }
+              }
+            },
+            "taskInfo": {
+              "name": "deploy-model"
+            }
+          }
+        }
+      },
+      "inputDefinitions": {
+        "parameters": {
+          "pipelinechannel--evaluate-model-Output": {
+            "parameterType": "NUMBER_DOUBLE"
+          },
+          "pipelinechannel--f1_threshold": {
+            "parameterType": "NUMBER_DOUBLE"
+          },
+          "pipelinechannel--model_gcs_path": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-deploy-model": {
+      "executorLabel": "exec-deploy-model",
+      "inputDefinitions": {
+        "parameters": {
+          "model_gcs_path": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-evaluate-model": {
+      "executorLabel": "exec-evaluate-model",
+      "inputDefinitions": {
+        "parameters": {
+          "model_gcs_path": {
+            "parameterType": "STRING"
+          },
+          "val_gcs_path": {
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "parameters": {
+          "Output": {
+            "parameterType": "NUMBER_DOUBLE"
+          }
+        }
+      }
+    },
+    "comp-train-model": {
+      "executorLabel": "exec-train-model",
+      "inputDefinitions": {
+        "parameters": {
+          "max_iter": {
+            "defaultValue": 1000.0,
+            "isOptional": true,
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "model_gcs_path": {
+            "parameterType": "STRING"
+          },
+          "random_state": {
+            "defaultValue": 42.0,
+            "isOptional": true,
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "train_gcs_path": {
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "parameters": {
+          "Output": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    }
+  },
+  "defaultPipelineRoot": "gs://carty-470812/project1-support-tickets",
+  "deploymentSpec": {
+    "executors": {
+      "exec-deploy-model": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "deploy_model"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.16.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef deploy_model(model_gcs_path: str):\n    \"\"\"Mock deployment \u2014 logs intent to deploy.\"\"\"\n    print(f\"Would deploy model from {model_gcs_path}\")\n\n"
+          ],
+          "image": "python:3.11"
+        }
+      },
+      "exec-evaluate-model": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "evaluate_model"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'scikit-learn==1.3.2' 'pandas' 'joblib' 'google-cloud-storage'  &&  python3 -m pip install --quiet --no-warn-script-location 'kfp==2.16.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef evaluate_model(\n    val_gcs_path: str,\n    model_gcs_path: str,\n) -> float:\n    \"\"\"Evaluate the model on the validation set. Returns weighted F1.\"\"\"\n    import pandas as pd\n    from sklearn.metrics import f1_score, classification_report\n    import joblib\n    from google.cloud import storage\n\n    # 1. Download val CSV from GCS\n    client = storage.Client()\n    bucket_name = val_gcs_path.replace(\"gs://\", \"\").split(\"/\")[0]\n    bucket = client.bucket(bucket_name)\n\n    val_blob = \"/\".join(val_gcs_path.replace(\"gs://\", \"\").split(\"/\")[1:])\n    bucket.blob(val_blob).download_to_filename(\"/tmp/val.csv\")\n\n    # 2. Download model and vectorizer from GCS\n    model_blob = model_gcs_path.replace(\"gs://\", \"\").split(\"/\", 1)[1]\n    tfidf_blob = model_blob.rsplit(\"/\", 1)[0] + \"/tfidf.joblib\"\n\n    bucket.blob(model_blob).download_to_filename(\"/tmp/model.joblib\")\n    bucket.blob(tfidf_blob).download_to_filename(\"/tmp/tfidf.joblib\")\n\n    # 3. Load everything\n    val_df = pd.read_csv(\"/tmp/val.csv\")\n    X_val = val_df[\"text\"]\n    y_val = val_df[\"queue\"]\n    model = joblib.load(\"/tmp/model.joblib\")\n    tfidf = joblib.load(\"/tmp/tfidf.joblib\")\n    print(f\"Evaluating on {len(X_val)} samples\")\n\n    # 4. Transform and predict\n    X_val_tfidf = tfidf.transform(X_val)\n    y_pred = model.predict(X_val_tfidf)\n\n    # 5. Compute metrics\n    weighted_f1 = f1_score(y_val, y_pred, average=\"weighted\")\n    print(classification_report(y_val, y_pred))\n    print(f\"Weighted F1: {weighted_f1:.4f}\")\n\n    return weighted_f1\n\n"
+          ],
+          "image": "python:3.11"
+        }
+      },
+      "exec-train-model": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "train_model"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'scikit-learn==1.3.2' 'pandas' 'joblib' 'google-cloud-storage'  &&  python3 -m pip install --quiet --no-warn-script-location 'kfp==2.16.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef train_model(\n    train_gcs_path: str,\n    model_gcs_path: str,\n    max_iter: int = 1000,\n    random_state: int = 42,\n) -> str:\n    \"\"\"Train TF-IDF + LogisticRegression on training data.\"\"\"\n    import pandas as pd\n    from sklearn.linear_model import LogisticRegression\n    from sklearn.feature_extraction.text import TfidfVectorizer\n    import joblib\n    from google.cloud import storage\n\n    # 1. Download training CSV from GCS\n    client = storage.Client()\n    bucket_name = train_gcs_path.replace(\"gs://\", \"\").split(\"/\")[0]\n    blob_path = \"/\".join(train_gcs_path.replace(\"gs://\", \"\").split(\"/\")[1:])\n    bucket = client.bucket(bucket_name)\n    bucket.blob(blob_path).download_to_filename(\"/tmp/train.csv\")\n\n    # 2. Load data\n    train_df = pd.read_csv(\"/tmp/train.csv\")\n    X_train = train_df[\"text\"]\n    y_train = train_df[\"queue\"]\n    print(f\"Training on {len(X_train)} samples\")\n\n    # 3. Fit TF-IDF\n    tfidf = TfidfVectorizer(max_features=10000, ngram_range=(1, 2))\n    X_train_tfidf = tfidf.fit_transform(X_train)\n    print(f\"TF-IDF features: {X_train_tfidf.shape[1]}\")\n\n    # 4. Train LogReg\n    model = LogisticRegression(\n        max_iter=max_iter,\n        random_state=random_state,\n        class_weight=\"balanced\",\n    )\n    model.fit(X_train_tfidf, y_train)\n    train_accuracy = model.score(X_train_tfidf, y_train)\n    print(f\"Train accuracy: {train_accuracy:.4f}\")\n\n    # 5. Save model and vectorizer locally\n    joblib.dump(model, \"/tmp/model.joblib\")\n    joblib.dump(tfidf, \"/tmp/tfidf.joblib\")\n\n    # 6. Upload both to GCS\n    model_blob = model_gcs_path.replace(\"gs://\", \"\").split(\"/\", 1)[1]\n    tfidf_blob = model_blob.rsplit(\"/\", 1)[0] + \"/tfidf.joblib\"\n\n    bucket.blob(model_blob).upload_from_filename(\"/tmp/model.joblib\")\n    bucket.blob(tfidf_blob).upload_from_filename(\"/tmp/tfidf.joblib\")\n    print(f\"Model saved to {model_gcs_path}\")\n    print(f\"Vectorizer saved to gs://{bucket_name}/{tfidf_blob}\")\n\n    return model_gcs_path\n\n"
+          ],
+          "image": "python:3.11"
+        }
+      }
+    }
+  },
+  "pipelineInfo": {
+    "name": "support-ticket-routing"
+  },
+  "root": {
+    "dag": {
+      "tasks": {
+        "condition-1": {
+          "componentRef": {
+            "name": "comp-condition-1"
+          },
+          "dependentTasks": [
+            "evaluate-model"
+          ],
+          "inputs": {
+            "parameters": {
+              "pipelinechannel--evaluate-model-Output": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "Output",
+                  "producerTask": "evaluate-model"
+                }
+              },
+              "pipelinechannel--f1_threshold": {
+                "componentInputParameter": "f1_threshold"
+              },
+              "pipelinechannel--model_gcs_path": {
+                "componentInputParameter": "model_gcs_path"
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "f1-check"
+          },
+          "triggerPolicy": {
+            "condition": "inputs.parameter_values['pipelinechannel--evaluate-model-Output'] >= inputs.parameter_values['pipelinechannel--f1_threshold']"
+          }
+        },
+        "evaluate-model": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-evaluate-model"
+          },
+          "dependentTasks": [
+            "train-model"
+          ],
+          "inputs": {
+            "parameters": {
+              "model_gcs_path": {
+                "componentInputParameter": "model_gcs_path"
+              },
+              "val_gcs_path": {
+                "componentInputParameter": "val_gcs_path"
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "evaluate-model"
+          }
+        },
+        "train-model": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-train-model"
+          },
+          "inputs": {
+            "parameters": {
+              "model_gcs_path": {
+                "componentInputParameter": "model_gcs_path"
+              },
+              "train_gcs_path": {
+                "componentInputParameter": "train_gcs_path"
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "train-model"
+          }
+        }
+      }
+    },
+    "inputDefinitions": {
+      "parameters": {
+        "f1_threshold": {
+          "defaultValue": 0.45,
+          "isOptional": true,
+          "parameterType": "NUMBER_DOUBLE"
+        },
+        "model_gcs_path": {
+          "parameterType": "STRING"
+        },
+        "train_gcs_path": {
+          "parameterType": "STRING"
+        },
+        "val_gcs_path": {
+          "parameterType": "STRING"
+        }
+      }
+    }
+  },
+  "schemaVersion": "2.1.0",
+  "sdkVersion": "kfp-2.16.0"
+}
