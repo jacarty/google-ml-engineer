@@ -22,6 +22,12 @@ Hands-on labs and notes for the [Google Cloud Professional Machine Learning Engi
 | Mini-Lab D | Shadow Deployment | ✅ Complete |
 | Mini-Lab E | Dataflow + RunInference | ✅ Complete |
 
+| Project | Domain | Status | Key Outcome |
+|---------|--------|--------|-------------|
+| Project 1: Support Ticket Routing | Text / NLP | ✅ Complete | KFP pipeline with conditional deploy, CPR endpoint, Weighted F1 0.5156 |
+| Project 2: Serengeti Wildlife Species ID | Image / Vision | ✅ Complete | MobileNetV2 transfer learning, 72.6% test accuracy (10 species), occlusion sensitivity explainability |
+| Project 3: Bitcoin Volatility Forecasting | Time Series / Finance | ⬜ Not Started | — |
+
 See [`ml_labs/ml_labs_plan.md`](ml_labs/ml_labs_plan.md) for the full study plan.
 
 ## Reference

@@ -12,8 +12,8 @@
 
 | Project | Domain | Status | Key Outcome |
 |---------|--------|--------|-------------|
-| Project 1: Support Ticket Routing | Text / NLP | ✅ Complete | Pipeline (balanced weights) | Weighted F1 | 0.5156 |
-| Project 2: Serengeti Wildlife Species ID | Image / Vision | ⬜ Not Started | — |
+| Project 1: Support Ticket Routing | Text / NLP | ✅ Complete | KFP pipeline with conditional deploy, CPR endpoint, Weighted F1 0.5156 |
+| Project 2: Serengeti Wildlife Species ID | Image / Vision | ✅ Complete | MobileNetV2 transfer learning, 72.6% test accuracy (10 species), occlusion sensitivity explainability |
 | Project 3: Bitcoin Volatility Forecasting | Time Series / Finance | ⬜ Not Started | — |
 
 ---
@@ -86,71 +86,74 @@ This also covers the exam pattern: "route low-confidence predictions to human re
 
 ---
 
-## Project 2 — Serengeti Wildlife Species ID (Image Classification)
+## Project 2 — Serengeti Wildlife Species ID (Image Classification) ✅
 
 ### Overview
 
 | Attribute | Detail |
 |-----------|--------|
-| **Dataset** | Snapshot Serengeti via LILA BC (subset: top 10 species + empty class, ~50-80k images) |
-| **Task** | Multi-class image classification with empty frame filtering |
-| **Pipeline** | Download subset → BigQuery metadata → TFRecord sharded pipeline → transfer learning → Vertex AI custom training → AutoML comparison → endpoint with base64 serving |
-| **Estimated Cost** | ~$10-15 |
-| **Estimated Time** | 8-10 hours |
+| **Dataset** | Snapshot Serengeti via LILA BC (29,880 images, top 10 species, one image per sequence) |
+| **Task** | 10-class wildlife species classification from camera trap images |
+| **Pipeline** | COCO JSON metadata → GCS image subset → BigQuery metadata → sharded TFRecords (cloud) → MobileNetV2 transfer learning → base64 serving endpoint → occlusion sensitivity explainability |
+| **Actual Cost** | ~$12-15 |
+| **Actual Time** | ~10 hours (including ~6 hours of CPU training due to GPU quota limits) |
+
+### Results
+
+| Metric | Value |
+|--------|-------|
+| Test Accuracy (overall) | 72.6% |
+| Best Species | giraffe (80.5%), impala (80.3%), warthog (80.6%) |
+| Worst Species | Grant's gazelle (49.3%), hartebeest (63.4%), wildebeest (67.9%) |
+| Main Confusion Pairs | Grant's ↔ Thomson's gazelle, wildebeest ↔ buffalo |
+| Training (v1, wrong preprocessing) | 68.4% val accuracy |
+| Training (v2, corrected preprocessing) | 76.8% val accuracy |
 
 ### Skills Reinforced
 
 | Skill | Original Lab | How It's Applied Here |
 |-------|-------------|----------------------|
-| Transfer learning (MobileNetV2/EfficientNet) | Lab 8 | Fine-tune on wildlife species with freeze → unfreeze |
-| TFRecord sharded pipeline | Mini-Lab C | Convert images to sharded TFRecords for efficient I/O |
-| tf.data pipeline | Lab 8, Mini-Lab C | Image augmentation, prefetch, interleave for sharded reads |
-| Base64 serving pattern | Lab 8 | Bake decode+preprocess into SavedModel graph |
-| AutoML comparison | Lab 2, Lab 8 | AutoML Vision vs custom model cost/accuracy tradeoff |
-| Experiment tracking | Lab 5 | Log per-class metrics across model variants |
+| Transfer learning (MobileNetV2) | Lab 8 | Freeze → fine-tune on wildlife species |
+| TFRecord sharded pipeline | Mini-Lab C | Cloud-based TFRecord creation via CustomJob |
+| tf.data pipeline | Lab 8, Mini-Lab C | Image augmentation (flip, brightness, contrast), prefetch |
+| Base64 serving pattern | Lab 8 | Bake decode+preprocess into SavedModel graph via export script |
+| Custom training on Vertex AI | Labs 2, 7, 8 | Prebuilt TF 2.15 CPU container (GPU quota unavailable) |
 
-### New Skill: XRAI Explainability on Image Model
+### New Skill: Image Explainability (XRAI → Occlusion Sensitivity Fallback)
 
-Mini-Lab B covered Sampled Shapley (tabular, any model) and Integrated Gradients (tabular, neural nets) but never used XRAI — the image-specific explainability method. This project completes the trifecta:
+Attempted XRAI via Vertex AI ExplanationSpec — failed with metadata mismatch (`Explain metadata output not in output_signature of the model function`). ExplanationSpec requires exact match between metadata input/output names and the serving signature's tensor names. Fell back to occlusion sensitivity (perturbation-based, model-agnostic), which produced region-level attribution heatmaps showing the model focuses on animal bodies.
 
-- Deploy model with `ExplanationSpec` using XRAI parameters
-- Request explanations via the endpoint
-- Visualize region-level attributions (e.g. "model focused on stripes → zebra")
-- Compare XRAI vs Integrated Gradients on the same image model
-- Document the full explainability decision framework with all three methods tested hands-on
+Exam knowledge confirmed: XRAI = image specialist, configured at model upload time via `ExplanationSpec` with `XraiAttribution(step_count=N)`. Sampled Shapley = any model. Integrated Gradients = differentiable models.
 
-Exam pattern: "Explain why the image was classified as X" → XRAI (region-level) or IG (pixel-level).
+### Parts (As Executed)
 
-### Parts
+| Part | Focus | Actual Time |
+|------|-------|-------------|
+| 1 | Setup + Metadata Download (LILA BC JSON) + Species EDA | ~45 min |
+| 2 | Subset Selection (3k/class, one per sequence) + GCS Copy | ~30 min (copy ~20 min with 32 threads) |
+| 3 | BigQuery Metadata Table + Location-Based Splits | ~30 min |
+| 4 | TFRecord Pipeline (sharded, cloud-based CustomJob) | ~30 min job time |
+| 5 | Transfer Learning — v1 (wrong preprocessing) then v2 (corrected) | ~3 hrs each on CPU |
+| 6 | Evaluation (per-class confusion matrix via CustomJob) | ~10 min |
+| 7 | Model Export (base64 serving wrapper) + Endpoint Deployment | ~30 min |
+| 7b | Endpoint Testing (zebra, elephant, giraffe — all correct, >99% confidence) | ~5 min |
+| 8 | XRAI attempt (failed) → Occlusion Sensitivity (CustomJob) | ~15 min |
+| 9 | Cleanup | ~10 min |
 
-| Part | Focus | Estimated Time |
-|------|-------|---------------|
-| 1 | Setup + Data Download (LILA BC subset) | ~1 hr |
-| 2 | Data Exploration + BigQuery Metadata Table | ~30 min |
-| 3 | TFRecord Pipeline (sharded, with augmentation) | ~1 hr |
-| 4 | Transfer Learning Model (MobileNetV2 fine-tune) | ~1.5 hr |
-| 5 | AutoML Vision Comparison | ~1 hr (mostly waiting) |
-| 6 | Model Deployment (base64 serving + XRAI) | ~1.5 hr |
-| 7 | XRAI Explainability Analysis | ~1 hr |
-| 8 | Cleanup | ~15 min |
+### Key Learnings
 
-### Success Criteria
-
-- Subset of 50-80k images across 10+ species loaded and processed
-- Custom model achieves >90% accuracy on held-out test set
-- AutoML comparison documented with cost/accuracy tradeoff
-- XRAI explanations visualized showing meaningful region attributions
-- Base64 serving pattern working end-to-end
-- All resources cleaned up
-
-### Dataset Notes
-
-- Source: https://lila.science/datasets/snapshot-serengeti/
-- Full dataset: ~7.1M images, 61 categories — far too large; subset required
-- Subsetting strategy: top 10 species by image count + empty class, one image per sequence (avoid near-duplicates)
-- Challenges: class imbalance, night images (IR), motion blur, empty frames (~76% of full dataset)
-- Images are JPEG, varying resolution
-- COCO Camera Traps JSON format for annotations
+- **MobileNetV2 `preprocess_input` expects [-1, 1], not [0, 1]** — wrong normalisation cost ~10% accuracy. The ImageNet weights are calibrated for a specific input range; feeding the wrong range means every activation in the base model is shifted. Always use the model-specific `preprocess_input` function.
+- **Location-based splitting prevents data leakage from shared camera backgrounds** — if the same camera appears in train and val, the model can memorise background features (specific trees, camera angle) instead of learning animal features. Hash-based split on camera location ensures the model has never seen a camera's background during validation.
+- **Camera trap images are genuinely hard** — night IR images, motion blur, visually similar species (Grant's vs Thomson's gazelle). 72.6% on 10 species with these challenges is reasonable for MobileNetV2 with 3k images/class.
+- **Server-side GCS copy (`blob.rewrite`) is much faster than download+upload** — data never touches your machine when copying between GCS buckets.
+- **Run everything on Vertex AI when TF is involved** — TF 2.15 SavedModels + Python 3.13 + Apple Silicon = unreliable locally. TFRecord reading, model loading, and inference all hang or crash. Use CustomJobs for anything TF-related.
+- **TF 2.15 SavedModels require `tf.saved_model.load` or `TFSMLayer` under Keras 3** — `keras.models.load_model()` rejects Keras 2 SavedModel format.
+- **ExplanationSpec metadata must match exact serving signature input/output names** — the error message is clear but debugging requires knowing your signature's tensor names precisely.
+- **Occlusion sensitivity is a viable model-agnostic alternative to GradCAM/XRAI** — systematically block patches, measure confidence drop. Slower but works with any model, any framework, any saved format.
+- **CPU training on Vertex AI works but is ~10x slower than GPU** — ~3 hrs vs ~20 min for 20 epochs on 21k images. Request GPU quota increase before your next project.
+- **EarlyStopping with `restore_best_weights=True` prevents overfitting degradation** — v2 peaked at epoch 6 of fine-tuning, and EarlyStopping restored the best weights rather than keeping the degraded final epoch.
+- **`ReduceLROnPlateau` helps stabilise fine-tuning** — automatically halves learning rate when val loss stalls, preventing the oscillation seen in v1.
+- **`sync=False` on CustomJob means the resource isn't immediately available** — accessing `job.display_name` right after `job.run(sync=False)` raises `RuntimeError` because the API call is still in flight. Add a `time.sleep(15)` or check status in a separate cell.
 
 ---
 
@@ -229,7 +232,8 @@ These three projects together touch the following exam topics not yet covered by
 |-----------|---------|-------------|
 | KFP pipeline on real data (not toy) | Project 1 | "Orchestrate ML workflow with conditional logic" |
 | Low-confidence → human review routing | Project 1 | "Handle uncertain predictions in production" |
-| XRAI explainability (hands-on) | Project 2 | "Explain image classification decisions" |
+| Image explainability (XRAI/occlusion sensitivity) | Project 2 | "Explain image classification decisions" |
+| ExplanationSpec configuration gotchas | Project 2 | "Configure explainability for deployed model" |
 | ARIMA_PLUS with exogenous variables | Project 3 | "Forecast with external features in BQML" |
 | Multi-model traffic splitting (real comparison) | Project 3 | "Compare models in production" |
 
@@ -255,5 +259,5 @@ Same as the labs — prebuilt first unless there's a specific reason for custom:
 | Project | Training Container | Serving Container |
 |---------|-------------------|-------------------|
 | Project 1 (Text) | Prebuilt TF 2.15 | CPR (custom predictor) |
-| Project 2 (Image) | Prebuilt TF 2.15 | Prebuilt TF 2.15 (base64 serving) |
+| Project 2 (Image) | Prebuilt TF 2.15 (CPU — GPU quota unavailable) | Prebuilt TF 2.15 (base64 serving) |
 | Project 3 (Time Series) | Prebuilt sklearn 1.0 / TF 2.15 | Prebuilt sklearn / TF |
