@@ -26,7 +26,8 @@ Hands-on labs and notes for the [Google Cloud Professional Machine Learning Engi
 |---------|--------|--------|-------------|
 | Project 1: Support Ticket Routing | Text / NLP | ✅ Complete | KFP pipeline with conditional deploy, CPR endpoint, Weighted F1 0.5156 |
 | Project 2: Serengeti Wildlife Species ID | Image / Vision | ✅ Complete | MobileNetV2 transfer learning, 72.6% test accuracy (10 species), occlusion sensitivity explainability |
-| Project 3: Bitcoin Volatility Forecasting | Time Series / Finance | ⬜ Not Started | — |
+| Project 3: Bitcoin Volatility Forecasting | Time Series / Finance | ✅ Complete | ARIMA_PLUS + GBT + LSTM ensemble; 26% RMSE improvement over climatology baseline; ARIMA_PLUS_XREG with exogenous regressors |
+
 
 See [`ml_labs/ml_labs_plan.md`](ml_labs/ml_labs_plan.md) for the full study plan.
 
